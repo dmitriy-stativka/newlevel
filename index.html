@@ -1,326 +1,384 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="ru">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Super Neon Mario</title>
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"
+    />
+    <title>Neon Mario Mobile</title>
     <style>
-        body {
-            margin: 0;
-            background: #000;
-            overflow: hidden;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
-            color: #00f2ff;
-            font-family: 'Courier New', Courier, monospace;
-        }
-        #game-container {
-            position: relative;
-            border: 4px solid #333;
-            box-shadow: 0 0 20px rgba(0, 242, 255, 0.2);
-            background: linear-gradient(to bottom, #001f3f, #000);
-        }
-        canvas { display: block; }
-        .hud {
-            position: absolute;
-            top: 10px;
-            left: 20px;
-            right: 20px;
-            display: flex;
-            justify-content: space-between;
-            font-size: 20px;
-            font-weight: bold;
-            pointer-events: none;
-            text-shadow: 2px 2px #000;
-        }
-        .controls-hint {
-            margin-top: 10px;
-            font-size: 14px;
-            color: #555;
-        }
+      :root {
+        --neon-blue: #00f2ff;
+        --neon-pink: #ff0055;
+      }
+
+      body {
+        margin: 0;
+        background: #000;
+        overflow: hidden;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        font-family: "Courier New", monospace;
+        touch-action: none; /* Отключаем стандартные жесты браузера */
+      }
+
+      #game-container {
+        position: relative;
+        width: 100vw;
+        height: 60vh;
+        background: linear-gradient(to bottom, #001a33, #000);
+        border-bottom: 2px solid var(--neon-blue);
+      }
+
+      canvas {
+        width: 100%;
+        height: 100%;
+        display: block;
+      }
+
+      .hud {
+        position: absolute;
+        top: 10px;
+        width: 100%;
+        display: flex;
+        justify-content: space-around;
+        color: var(--neon-blue);
+        font-weight: bold;
+        text-shadow: 0 0 10px var(--neon-blue);
+        pointer-events: none;
+        z-index: 5;
+      }
+
+      /* СТИЛИ КНОПОК ДЛЯ МОБИЛКИ */
+      #controls {
+        width: 100vw;
+        height: 40vh;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 20px;
+        background: #0a0a0a;
+      }
+
+      .d-pad {
+        display: grid;
+        grid-template-columns: repeat(3, 60px);
+        grid-template-rows: repeat(2, 60px);
+        gap: 10px;
+      }
+
+      .action-buttons {
+        display: flex;
+        align-items: center;
+        padding-right: 20px;
+      }
+
+      .btn {
+        width: 70px;
+        height: 70px;
+        background: rgba(255, 255, 255, 0.1);
+        border: 2px solid var(--neon-blue);
+        border-radius: 15px;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        color: var(--neon-blue);
+        font-size: 30px;
+        user-select: none;
+        -webkit-user-select: none;
+      }
+
+      .btn:active {
+        background: var(--neon-blue);
+        color: #000;
+        box-shadow: 0 0 20px var(--neon-blue);
+      }
+
+      .btn-jump {
+        width: 90px;
+        height: 90px;
+        border-radius: 50%;
+        border-color: var(--neon-pink);
+        color: var(--neon-pink);
+      }
+
+      .btn-jump:active {
+        background: var(--neon-pink);
+        color: #000;
+        box-shadow: 0 0 25px var(--neon-pink);
+      }
+
+      #btn-left {
+        grid-column: 1;
+        grid-row: 2;
+      }
+      #btn-right {
+        grid-column: 3;
+        grid-row: 2;
+      }
     </style>
-</head>
-<body>
-
-<div id="game-container">
-    <div class="hud">
-        <div>MARIO: <span id="score">000000</span></div>
+  </head>
+  <body>
+    <div id="game-container">
+      <div class="hud">
+        <div>SCORE: <span id="score">0</span></div>
         <div>COINS: <span id="coins">0</span></div>
-        <div>WORLD: 1-1</div>
+      </div>
+      <canvas id="canvas"></canvas>
     </div>
-    <canvas id="canvas"></canvas>
-</div>
-<div class="controls-hint">ARROWS to Move & Jump | Mobile: Tap Left/Right/Top sides</div>
 
-<script>
-/** @type {HTMLCanvasElement} */
-const canvas = document.getElementById('canvas');
-const ctx = canvas.getContext('2d');
+    <div id="controls">
+      <div class="d-pad">
+        <div class="btn" id="btn-left">◀</div>
+        <div class="btn" id="btn-right">▶</div>
+      </div>
+      <div class="action-buttons">
+        <div class="btn btn-jump" id="btn-jump">UP</div>
+      </div>
+    </div>
 
-const WIDTH = 800;
-const HEIGHT = 480;
-const TILE_SIZE = 40;
+    <script>
+      const canvas = document.getElementById("canvas");
+      const ctx = canvas.getContext("2d");
 
-canvas.width = WIDTH;
-canvas.height = HEIGHT;
+      // Фиксированное внутреннее разрешение для логики
+      const W = 800;
+      const H = 480;
+      canvas.width = W;
+      canvas.height = H;
 
-// Состояние игры
-const game = {
-    gravity: 0.6,
-    friction: 0.85,
-    cameraX: 0,
-    score: 0,
-    coins: 0
-};
+      const TILE = 40;
+      const levelStr = [
+        "                                                                                ",
+        "                                                                                ",
+        "      ---                                                                       ",
+        "             ?        ?            ---                                          ",
+        "                                           ----                                 ",
+        "        ---        ?     ?                                                      ",
+        "                                     P                                          ",
+        "    ?     #  #    ---               ---           # #        ?                  ",
+        "                                                                                ",
+        "111111111111111111111111   11111111111111111111111111111111111111111111111111111",
+        "111111111111111111111111   11111111111111111111111111111111111111111111111111111",
+      ];
 
-// Клавиши
-const keys = {};
-window.addEventListener('keydown', e => {
-    keys[e.code] = true;
-    if(["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", "Space"].includes(e.code)) e.preventDefault();
-});
-window.addEventListener('keyup', e => keys[e.code] = false);
+      let gameState = {
+        score: 0,
+        coins: 0,
+        cameraX: 0,
+      };
 
-// Мобильное управление (простое)
-canvas.addEventListener('touchstart', e => {
-    const touchX = e.touches[0].clientX - canvas.getBoundingClientRect().left;
-    const touchY = e.touches[0].clientY - canvas.getBoundingClientRect().top;
-    if (touchY < HEIGHT / 3) keys['ArrowUp'] = true;
-    else if (touchX < WIDTH / 2) keys['ArrowLeft'] = true;
-    else keys['ArrowRight'] = true;
-}, {passive: false});
-canvas.addEventListener('touchend', () => {
-    keys['ArrowUp'] = false;
-    keys['ArrowLeft'] = false;
-    keys['ArrowRight'] = false;
-});
+      const keys = { Left: false, Right: false, Up: false };
 
-// Карта (0 - пусто, 1 - земля, 2 - кирпич, 3 - монетка блок, 4 - труба)
-const level = [
-    "                                                                                ",
-    "                                                                                ",
-    "      ---                                                                       ",
-    "                                  ---                                           ",
-    "             ?        ?                                                         ",
-    "                                           ----                                 ",
-    "        ---        ?     ?                                                      ",
-    "                                     P                                          ",
-    "    ?     #  #    ---               ---           # #        ?                  ",
-    "                                                                                ",
-    "111111111111111111111111   11111111111111111111111111111111111111111111111111111",
-    "111111111111111111111111   11111111111111111111111111111111111111111111111111111"
-];
+      // --- УПРАВЛЕНИЕ (КЛАВИАТУРА + КНОПКИ) ---
+      function setupControls() {
+        // Клавиатура
+        window.addEventListener("keydown", (e) => {
+          if (e.code === "ArrowLeft") keys.Left = true;
+          if (e.code === "ArrowRight") keys.Right = true;
+          if (e.code === "ArrowUp" || e.code === "Space") keys.Up = true;
+        });
+        window.addEventListener("keyup", (e) => {
+          if (e.code === "ArrowLeft") keys.Left = false;
+          if (e.code === "ArrowRight") keys.Right = false;
+          if (e.code === "ArrowUp" || e.code === "Space") keys.Up = false;
+        });
 
-class Player {
-    constructor() {
-        this.reset();
-    }
-    reset() {
-        this.x = 100;
-        this.y = 200;
-        this.w = 32;
-        this.h = 40;
-        this.vx = 0;
-        this.vy = 0;
-        this.onGround = false;
-        this.facing = 1; // 1 - право, -1 - лево
-        this.animFrame = 0;
-    }
-    update() {
-        // Управление
-        if (keys['ArrowRight']) { this.vx += 0.8; this.facing = 1; }
-        if (keys['ArrowLeft']) { this.vx -= 0.8; this.facing = -1; }
-        if ((keys['ArrowUp'] || keys['Space']) && this.onGround) {
-            this.vy = -13;
+        // Сенсорные кнопки
+        const bindBtn = (id, key) => {
+          const el = document.getElementById(id);
+          el.addEventListener(
+            "touchstart",
+            (e) => {
+              e.preventDefault();
+              keys[key] = true;
+            },
+            { passive: false },
+          );
+          el.addEventListener(
+            "touchend",
+            (e) => {
+              e.preventDefault();
+              keys[key] = false;
+            },
+            { passive: false },
+          );
+          // Для теста мышкой на ПК
+          el.addEventListener("mousedown", () => (keys[key] = true));
+          el.addEventListener("mouseup", () => (keys[key] = false));
+        };
+
+        bindBtn("btn-left", "Left");
+        bindBtn("btn-right", "Right");
+        bindBtn("btn-jump", "Up");
+      }
+
+      class Player {
+        constructor() {
+          this.reset();
+        }
+        reset() {
+          this.x = 80;
+          this.y = 300;
+          this.w = 32;
+          this.h = 40;
+          this.vx = 0;
+          this.vy = 0;
+          this.onGround = false;
+        }
+        update() {
+          if (keys.Right) this.vx += 0.8;
+          if (keys.Left) this.vx -= 0.8;
+          if (keys.Up && this.onGround) {
+            this.vy = -14;
             this.onGround = false;
+          }
+
+          this.vy += 0.7; // Gravity
+          this.vx *= 0.85; // Friction
+
+          this.x += this.vx;
+          this.solveCollisions(this.vx, 0);
+          this.y += this.vy;
+          this.solveCollisions(0, this.vy);
+
+          if (this.x > gameState.cameraX + W / 2)
+            gameState.cameraX = this.x - W / 2;
+          if (this.y > H) this.reset();
         }
+        solveCollisions(vx, vy) {
+          for (let row = 0; row < levelStr.length; row++) {
+            for (let col = 0; col < levelStr[row].length; col++) {
+              let char = levelStr[row][col];
+              if (char === " ") continue;
+              let bx = col * TILE,
+                by = row * TILE;
+              let bw = TILE,
+                bh = char === "-" ? TILE / 2 : TILE;
 
-        this.vy += game.gravity;
-        this.vx *= game.friction;
-
-        this.x += this.vx;
-        this.checkCollision(this.vx, 0);
-        this.y += this.vy;
-        this.checkCollision(0, this.vy);
-
-        // Камера
-        if (this.x > game.cameraX + WIDTH / 2) {
-            game.cameraX = this.x - WIDTH / 2;
-        }
-        
-        // Смерть при падении
-        if (this.y > HEIGHT) this.reset();
-    }
-
-    checkCollision(vx, vy) {
-        for (let row = 0; row < level.length; row++) {
-            for (let col = 0; col < level[row].length; col++) {
-                const char = level[row][col];
-                if (char === ' ' || char === 'P') continue;
-
-                const bx = col * TILE_SIZE;
-                const by = row * TILE_SIZE;
-
-                if (this.x < bx + TILE_SIZE && this.x + this.w > bx &&
-                    this.y < by + TILE_SIZE && this.y + this.h > by) {
-                    
-                    if (vy > 0) { // Падение
-                        this.y = by - this.h;
-                        this.vy = 0;
-                        this.onGround = true;
-                    } else if (vy < 0) { // Удар головой
-                        this.y = by + TILE_SIZE;
-                        this.vy = 0;
-                        if(char === '?') {
-                            game.score += 100;
-                            game.coins += 1;
-                            // "Выбиваем" монетку (визуально менять лень, но логика есть)
-                        }
-                    }
-                    if (vx > 0) this.x = bx - this.w;
-                    if (vx < 0) this.x = bx + TILE_SIZE;
+              if (
+                this.x < bx + bw &&
+                this.x + this.w > bx &&
+                this.y < by + bh &&
+                this.y + this.h > by
+              ) {
+                if (vy > 0) {
+                  this.y = by - this.h;
+                  this.vy = 0;
+                  this.onGround = true;
+                } else if (vy < 0) {
+                  this.y = by + bh;
+                  this.vy = 0;
+                  if (char === "?") {
+                    gameState.score += 100;
+                    gameState.coins += 1;
+                  }
                 }
+                if (vx > 0) this.x = bx - this.w;
+                if (vx < 0) this.x = bx + bw;
+              }
             }
+          }
         }
-    }
+        draw() {
+          ctx.fillStyle = varColor("--neon-pink");
+          ctx.shadowBlur = 10;
+          ctx.shadowColor = varColor("--neon-pink");
+          ctx.fillRect(this.x - gameState.cameraX, this.y, this.w, this.h);
+          ctx.shadowBlur = 0;
+        }
+      }
 
-    draw() {
-        ctx.save();
-        ctx.translate(-game.cameraX, 0);
-        
-        // Марио (неоновый человечек)
-        ctx.fillStyle = "#ff3300"; // Кепка/Одежда
-        ctx.shadowBlur = 10;
-        ctx.shadowColor = "#ff3300";
-        
-        // Анимация "шага"
-        let walkOffset = Math.sin(Date.now() / 50) * 5;
-        if (Math.abs(this.vx) < 0.2) walkOffset = 0;
+      class Enemy {
+        constructor(x, y) {
+          this.x = x;
+          this.y = y;
+          this.vx = -2;
+          this.w = 32;
+          this.h = 32;
+          this.dead = false;
+        }
+        update() {
+          if (this.dead) return;
+          this.x += this.vx;
+          if (this.x % 300 === 0) this.vx *= -1;
 
-        ctx.fillRect(this.x, this.y, this.w, this.h);
-        
-        // Глаза/Детали
-        ctx.fillStyle = "#000";
-        ctx.fillRect(this.facing === 1 ? this.x + 20 : this.x + 5, this.y + 8, 5, 5);
-        
-        ctx.restore();
-    }
-}
-
-class Enemy {
-    constructor(x, y) {
-        this.x = x;
-        this.y = y;
-        this.w = 32;
-        this.h = 32;
-        this.vx = -2;
-        this.dead = false;
-    }
-    update() {
-        if(this.dead) return;
-        this.x += this.vx;
-        // Простая смена направления при столкновении (в рамках этого кода - просто по таймеру или границам)
-        if(this.x % 400 === 0) this.vx *= -1;
-    }
-    draw() {
-        if(this.dead) return;
-        ctx.save();
-        ctx.translate(-game.cameraX, 0);
-        ctx.fillStyle = "#ff00ff";
-        ctx.fillRect(this.x, this.y, this.w, this.h);
-        ctx.restore();
-    }
-}
-
-const player = new Player();
-const enemies = [new Enemy(600, 360), new Enemy(1200, 360)];
-
-function drawLevel() {
-    ctx.save();
-    ctx.translate(-game.cameraX, 0);
-    
-    for (let row = 0; row < level.length; row++) {
-        for (let col = 0; col < level[row].length; col++) {
-            const char = level[row][col];
-            const x = col * TILE_SIZE;
-            const y = row * TILE_SIZE;
-
-            if (char === '1') { // Земля
-                ctx.fillStyle = '#111';
-                ctx.fillRect(x, y, TILE_SIZE, TILE_SIZE);
-                ctx.strokeStyle = '#00f2ff';
-                ctx.strokeRect(x, y, TILE_SIZE, TILE_SIZE);
-            } else if (char === '-') { // Платформа
-                ctx.fillStyle = '#333';
-                ctx.fillRect(x, y, TILE_SIZE, TILE_SIZE / 2);
-                ctx.strokeStyle = '#ff00ff';
-                ctx.strokeRect(x, y, TILE_SIZE, TILE_SIZE / 2);
-            } else if (char === '?') { // Секрет
-                ctx.fillStyle = '#ffcc00';
-                ctx.shadowBlur = 10;
-                ctx.shadowColor = '#ffcc00';
-                ctx.fillRect(x + 5, y + 5, TILE_SIZE - 10, TILE_SIZE - 10);
-                ctx.shadowBlur = 0;
-            } else if (char === '#') { // Кирпич
-                ctx.fillStyle = '#663300';
-                ctx.fillRect(x, y, TILE_SIZE, TILE_SIZE);
-                ctx.strokeRect(x, y, TILE_SIZE, TILE_SIZE);
-            } else if (char === 'P') { // Труба
-                ctx.fillStyle = '#00ff00';
-                ctx.fillRect(x, y, TILE_SIZE * 1.5, TILE_SIZE * 2);
-                ctx.strokeRect(x, y, TILE_SIZE * 1.5, TILE_SIZE * 2);
+          if (
+            player.x < this.x + this.w &&
+            player.x + player.w > this.x &&
+            player.y < this.y + this.h &&
+            player.y + player.h > this.y
+          ) {
+            if (player.vy > 0) {
+              this.dead = true;
+              player.vy = -10;
+              gameState.score += 200;
+            } else {
+              player.reset();
             }
+          }
         }
-    }
-    ctx.restore();
-}
+        draw() {
+          if (this.dead) return;
+          ctx.fillStyle = "#00ff66";
+          ctx.fillRect(this.x - gameState.cameraX, this.y, this.w, this.h);
+        }
+      }
 
-function update() {
-    player.update();
-    enemies.forEach(e => {
-        e.update();
-        // Коллизия с игроком
-        if (!e.dead && player.x < e.x + e.w && player.x + player.w > e.x &&
-            player.y < e.y + e.h && player.y + player.h > e.y) {
-            if (player.vy > 0) { // Напрыгнул сверху
-                e.dead = true;
-                player.vy = -10;
-                game.score += 200;
-            } else { // Умер
-                player.reset();
-                game.score = 0;
+      const player = new Player();
+      const enemies = [new Enemy(600, 368), new Enemy(1100, 368)];
+
+      function varColor(name) {
+        return getComputedStyle(document.body).getPropertyValue(name);
+      }
+
+      function draw() {
+        ctx.clearRect(0, 0, W, H);
+
+        // Draw Level
+        levelStr.forEach((row, rIdx) => {
+          row.split("").forEach((char, cIdx) => {
+            if (char === " ") return;
+            let x = cIdx * TILE - gameState.cameraX;
+            let y = rIdx * TILE;
+            if (char === "1") {
+              ctx.fillStyle = "#111";
+              ctx.fillRect(x, y, TILE, TILE);
+              ctx.strokeStyle = varColor("--neon-blue");
+              ctx.strokeRect(x, y, TILE, TILE);
             }
-        }
-    });
+            if (char === "-") {
+              ctx.fillStyle = "#222";
+              ctx.fillRect(x, y, TILE, TILE / 2);
+            }
+            if (char === "?") {
+              ctx.fillStyle = "#ffcc00";
+              ctx.fillRect(x + 5, y + 5, TILE - 10, TILE - 10);
+            }
+            if (char === "P") {
+              ctx.fillStyle = "#008800";
+              ctx.fillRect(x, y, TILE * 1.5, TILE * 2);
+            }
+          });
+        });
 
-    document.getElementById('score').innerText = String(Math.floor(game.score)).padStart(6, '0');
-    document.getElementById('coins').innerText = game.coins;
-}
+        player.update();
+        player.draw();
+        enemies.forEach((e) => {
+          e.update();
+          e.draw();
+        });
 
-function loop() {
-    ctx.clearRect(0, 0, WIDTH, HEIGHT);
-    
-    // Фон (параллакс облака можно добавить, но пока просто сетка)
-    ctx.strokeStyle = '#001122';
-    for(let i=0; i<WIDTH; i+=50) {
-        ctx.beginPath();
-        ctx.moveTo(i - (game.cameraX % 50), 0);
-        ctx.lineTo(i - (game.cameraX % 50), HEIGHT);
-        ctx.stroke();
-    }
+        document.getElementById("score").innerText = gameState.score;
+        document.getElementById("coins").innerText = gameState.coins;
 
-    drawLevel();
-    player.draw();
-    enemies.forEach(e => e.draw());
+        requestAnimationFrame(draw);
+      }
 
-    update();
-    requestAnimationFrame(loop);
-}
-
-loop();
-</script>
-</body>
+      setupControls();
+      draw();
+    </script>
+  </body>
 </html>
