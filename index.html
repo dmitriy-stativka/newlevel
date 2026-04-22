@@ -2,383 +2,50 @@
 <html lang="ru">
   <head>
     <meta charset="UTF-8" />
-    <meta
-      name="viewport"
-      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"
-    />
-    <title>Neon Mario Mobile</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Мой Игровой Хаб</title>
     <style>
-      :root {
-        --neon-blue: #00f2ff;
-        --neon-pink: #ff0055;
-      }
-
       body {
-        margin: 0;
-        background: #000;
-        overflow: hidden;
+        font-family: "Segoe UI", sans-serif;
+        background: #1a1a1a;
+        color: white;
         display: flex;
         flex-direction: column;
         align-items: center;
-        font-family: "Courier New", monospace;
-        touch-action: none; /* Отключаем стандартные жесты браузера */
-      }
-
-      #game-container {
-        position: relative;
-        width: 100vw;
-        height: 60vh;
-        background: linear-gradient(to bottom, #001a33, #000);
-        border-bottom: 2px solid var(--neon-blue);
-      }
-
-      canvas {
-        width: 100%;
-        height: 100%;
-        display: block;
-      }
-
-      .hud {
-        position: absolute;
-        top: 10px;
-        width: 100%;
-        display: flex;
-        justify-content: space-around;
-        color: var(--neon-blue);
-        font-weight: bold;
-        text-shadow: 0 0 10px var(--neon-blue);
-        pointer-events: none;
-        z-index: 5;
-      }
-
-      /* СТИЛИ КНОПОК ДЛЯ МОБИЛКИ */
-      #controls {
-        width: 100vw;
-        height: 40vh;
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        padding: 20px;
-        background: #0a0a0a;
-      }
-
-      .d-pad {
-        display: grid;
-        grid-template-columns: repeat(3, 60px);
-        grid-template-rows: repeat(2, 60px);
-        gap: 10px;
-      }
-
-      .action-buttons {
-        display: flex;
-        align-items: center;
-        padding-right: 20px;
-      }
-
-      .btn {
-        width: 70px;
-        height: 70px;
-        background: rgba(255, 255, 255, 0.1);
-        border: 2px solid var(--neon-blue);
-        border-radius: 15px;
-        display: flex;
         justify-content: center;
-        align-items: center;
-        color: var(--neon-blue);
-        font-size: 30px;
-        user-select: none;
-        -webkit-user-select: none;
+        height: 100vh;
+        margin: 0;
       }
-
-      .btn:active {
-        background: var(--neon-blue);
-        color: #000;
-        box-shadow: 0 0 20px var(--neon-blue);
+      h1 {
+        margin-bottom: 30px;
+        color: #00d4ff;
       }
-
-      .btn-jump {
-        width: 90px;
-        height: 90px;
-        border-radius: 50%;
-        border-color: var(--neon-pink);
-        color: var(--neon-pink);
+      .menu {
+        display: grid;
+        gap: 20px;
       }
-
-      .btn-jump:active {
-        background: var(--neon-pink);
-        color: #000;
-        box-shadow: 0 0 25px var(--neon-pink);
+      .game-card {
+        background: #333;
+        padding: 20px;
+        border-radius: 15px;
+        text-decoration: none;
+        color: white;
+        text-align: center;
+        transition: 0.3s;
+        border: 2px solid transparent;
       }
-
-      #btn-left {
-        grid-column: 1;
-        grid-row: 2;
-      }
-      #btn-right {
-        grid-column: 3;
-        grid-row: 2;
+      .game-card:hover {
+        background: #444;
+        border-color: #00d4ff;
+        transform: translateY(-5px);
       }
     </style>
   </head>
   <body>
-    <div id="game-container">
-      <div class="hud">
-        <div>SCORE: <span id="score">0</span></div>
-        <div>COINS: <span id="coins">0</span></div>
-      </div>
-      <canvas id="canvas"></canvas>
+    <h1>Выберите игру</h1>
+    <div class="menu">
+      <a href="dino.html" class="game-card">🦖 Динозаврик Chrome</a>
+      <a href="bird.html" class="game-card">🐦 Flappy Bird</a>
     </div>
-
-    <div id="controls">
-      <div class="d-pad">
-        <div class="btn" id="btn-left">◀</div>
-        <div class="btn" id="btn-right">▶</div>
-      </div>
-      <div class="action-buttons">
-        <div class="btn btn-jump" id="btn-jump">UP</div>
-      </div>
-    </div>
-
-    <script>
-      const canvas = document.getElementById("canvas");
-      const ctx = canvas.getContext("2d");
-
-      // Фиксированное внутреннее разрешение для логики
-      const W = 800;
-      const H = 480;
-      canvas.width = W;
-      canvas.height = H;
-
-      const TILE = 40;
-      const levelStr = [
-        "                                                                                ",
-        "                                                                                ",
-        "      ---                                                                       ",
-        "             ?        ?            ---                                          ",
-        "                                           ----                                 ",
-        "        ---        ?     ?                                                      ",
-        "                                     P                                          ",
-        "    ?     #  #    ---               ---           # #        ?                  ",
-        "                                                                                ",
-        "111111111111111111111111   11111111111111111111111111111111111111111111111111111",
-        "111111111111111111111111   11111111111111111111111111111111111111111111111111111",
-      ];
-
-      let gameState = {
-        score: 0,
-        coins: 0,
-        cameraX: 0,
-      };
-
-      const keys = { Left: false, Right: false, Up: false };
-
-      // --- УПРАВЛЕНИЕ (КЛАВИАТУРА + КНОПКИ) ---
-      function setupControls() {
-        // Клавиатура
-        window.addEventListener("keydown", (e) => {
-          if (e.code === "ArrowLeft") keys.Left = true;
-          if (e.code === "ArrowRight") keys.Right = true;
-          if (e.code === "ArrowUp" || e.code === "Space") keys.Up = true;
-        });
-        window.addEventListener("keyup", (e) => {
-          if (e.code === "ArrowLeft") keys.Left = false;
-          if (e.code === "ArrowRight") keys.Right = false;
-          if (e.code === "ArrowUp" || e.code === "Space") keys.Up = false;
-        });
-
-        // Сенсорные кнопки
-        const bindBtn = (id, key) => {
-          const el = document.getElementById(id);
-          el.addEventListener(
-            "touchstart",
-            (e) => {
-              e.preventDefault();
-              keys[key] = true;
-            },
-            { passive: false },
-          );
-          el.addEventListener(
-            "touchend",
-            (e) => {
-              e.preventDefault();
-              keys[key] = false;
-            },
-            { passive: false },
-          );
-          // Для теста мышкой на ПК
-          el.addEventListener("mousedown", () => (keys[key] = true));
-          el.addEventListener("mouseup", () => (keys[key] = false));
-        };
-
-        bindBtn("btn-left", "Left");
-        bindBtn("btn-right", "Right");
-        bindBtn("btn-jump", "Up");
-      }
-
-      class Player {
-        constructor() {
-          this.reset();
-        }
-        reset() {
-          this.x = 80;
-          this.y = 300;
-          this.w = 32;
-          this.h = 40;
-          this.vx = 0;
-          this.vy = 0;
-          this.onGround = false;
-        }
-        update() {
-          if (keys.Right) this.vx += 0.8;
-          if (keys.Left) this.vx -= 0.8;
-          if (keys.Up && this.onGround) {
-            this.vy = -14;
-            this.onGround = false;
-          }
-
-          this.vy += 0.7; // Gravity
-          this.vx *= 0.85; // Friction
-
-          this.x += this.vx;
-          this.solveCollisions(this.vx, 0);
-          this.y += this.vy;
-          this.solveCollisions(0, this.vy);
-
-          if (this.x > gameState.cameraX + W / 2)
-            gameState.cameraX = this.x - W / 2;
-          if (this.y > H) this.reset();
-        }
-        solveCollisions(vx, vy) {
-          for (let row = 0; row < levelStr.length; row++) {
-            for (let col = 0; col < levelStr[row].length; col++) {
-              let char = levelStr[row][col];
-              if (char === " ") continue;
-              let bx = col * TILE,
-                by = row * TILE;
-              let bw = TILE,
-                bh = char === "-" ? TILE / 2 : TILE;
-
-              if (
-                this.x < bx + bw &&
-                this.x + this.w > bx &&
-                this.y < by + bh &&
-                this.y + this.h > by
-              ) {
-                if (vy > 0) {
-                  this.y = by - this.h;
-                  this.vy = 0;
-                  this.onGround = true;
-                } else if (vy < 0) {
-                  this.y = by + bh;
-                  this.vy = 0;
-                  if (char === "?") {
-                    gameState.score += 100;
-                    gameState.coins += 1;
-                  }
-                }
-                if (vx > 0) this.x = bx - this.w;
-                if (vx < 0) this.x = bx + bw;
-              }
-            }
-          }
-        }
-        draw() {
-          ctx.fillStyle = varColor("--neon-pink");
-          ctx.shadowBlur = 10;
-          ctx.shadowColor = varColor("--neon-pink");
-          ctx.fillRect(this.x - gameState.cameraX, this.y, this.w, this.h);
-          ctx.shadowBlur = 0;
-        }
-      }
-
-      class Enemy {
-        constructor(x, y) {
-          this.x = x;
-          this.y = y;
-          this.vx = -2;
-          this.w = 32;
-          this.h = 32;
-          this.dead = false;
-        }
-        update() {
-          if (this.dead) return;
-          this.x += this.vx;
-          if (this.x % 300 === 0) this.vx *= -1;
-
-          if (
-            player.x < this.x + this.w &&
-            player.x + player.w > this.x &&
-            player.y < this.y + this.h &&
-            player.y + player.h > this.y
-          ) {
-            if (player.vy > 0) {
-              this.dead = true;
-              player.vy = -10;
-              gameState.score += 200;
-            } else {
-              player.reset();
-            }
-          }
-        }
-        draw() {
-          if (this.dead) return;
-          ctx.fillStyle = "#00ff66";
-          ctx.fillRect(this.x - gameState.cameraX, this.y, this.w, this.h);
-        }
-      }
-
-      const player = new Player();
-      const enemies = [new Enemy(600, 368), new Enemy(1100, 368)];
-
-      function varColor(name) {
-        return getComputedStyle(document.body).getPropertyValue(name);
-      }
-
-      function draw() {
-        ctx.clearRect(0, 0, W, H);
-
-        // Draw Level
-        levelStr.forEach((row, rIdx) => {
-          row.split("").forEach((char, cIdx) => {
-            if (char === " ") return;
-            let x = cIdx * TILE - gameState.cameraX;
-            let y = rIdx * TILE;
-            if (char === "1") {
-              ctx.fillStyle = "#111";
-              ctx.fillRect(x, y, TILE, TILE);
-              ctx.strokeStyle = varColor("--neon-blue");
-              ctx.strokeRect(x, y, TILE, TILE);
-            }
-            if (char === "-") {
-              ctx.fillStyle = "#222";
-              ctx.fillRect(x, y, TILE, TILE / 2);
-            }
-            if (char === "?") {
-              ctx.fillStyle = "#ffcc00";
-              ctx.fillRect(x + 5, y + 5, TILE - 10, TILE - 10);
-            }
-            if (char === "P") {
-              ctx.fillStyle = "#008800";
-              ctx.fillRect(x, y, TILE * 1.5, TILE * 2);
-            }
-          });
-        });
-
-        player.update();
-        player.draw();
-        enemies.forEach((e) => {
-          e.update();
-          e.draw();
-        });
-
-        document.getElementById("score").innerText = gameState.score;
-        document.getElementById("coins").innerText = gameState.coins;
-
-        requestAnimationFrame(draw);
-      }
-
-      setupControls();
-      draw();
-    </script>
   </body>
 </html>
