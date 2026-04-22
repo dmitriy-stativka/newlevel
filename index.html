@@ -2,50 +2,85 @@
 <html lang="ru">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Мой Игровой Хаб</title>
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover"
+    />
+    <title>Мой Игровой Хаб v2.0</title>
     <style>
+      * {
+        box-sizing: border-box;
+        -webkit-tap-highlight-color: transparent;
+        outline: none;
+      }
       body {
-        font-family: "Segoe UI", sans-serif;
-        background: #1a1a1a;
+        font-family: "Segoe UI", system-ui, sans-serif;
+        background: #121212;
         color: white;
         display: flex;
         flex-direction: column;
         align-items: center;
         justify-content: center;
-        height: 100vh;
+        min-height: 100vh;
         margin: 0;
+        padding: 20px;
       }
       h1 {
-        margin-bottom: 30px;
-        color: #00d4ff;
+        margin-bottom: 40px;
+        color: #fff;
+        text-shadow: 0 0 10px rgba(0, 212, 255, 0.7);
+        font-size: 2rem;
       }
       .menu {
         display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
         gap: 20px;
+        width: 100%;
+        max-width: 500px;
       }
       .game-card {
-        background: #333;
-        padding: 20px;
-        border-radius: 15px;
+        background: #1e1e1e;
+        padding: 25px;
+        border-radius: 20px;
         text-decoration: none;
         color: white;
         text-align: center;
-        transition: 0.3s;
-        border: 2px solid transparent;
+        transition: all 0.2s ease-out;
+        border: 1px solid #333;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 15px;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
       }
+      .game-card:active,
       .game-card:hover {
-        background: #444;
         border-color: #00d4ff;
-        transform: translateY(-5px);
+        transform: scale(1.03);
+        background: #252525;
+        box-shadow: 0 6px 15px rgba(0, 212, 255, 0.2);
+      }
+      .game-icon {
+        font-size: 3rem;
+      }
+      .game-title {
+        font-weight: 600;
+        font-size: 1rem;
+        color: #eee;
       }
     </style>
   </head>
   <body>
     <h1>Выберите игру</h1>
     <div class="menu">
-      <a href="dino.html" class="game-card">🦖 Динозаврик Chrome</a>
-      <a href="bird.html" class="game-card">🐦 Flappy Bird</a>
+      <a href="dino.html" class="game-card">
+        <span class="game-icon">🦖</span>
+        <span class="game-title">Chrome Dino</span>
+      </a>
+      <a href="bird.html" class="game-card">
+        <span class="game-icon">🐦</span>
+        <span class="game-title">Flappy Bird</span>
+      </a>
     </div>
   </body>
 </html>

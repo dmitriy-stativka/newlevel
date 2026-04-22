@@ -1,122 +1,349 @@
 <!doctype html>
-<html>
+<html lang="ru">
   <head>
-    <title>Dino Run</title>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover"
+    />
+    <title>Chrome Dino Mobile+</title>
     <style>
+      * {
+        box-sizing: border-box;
+        -webkit-tap-highlight-color: transparent;
+        touch-action: none;
+        user-select: none;
+      }
       body {
-        text-align: center;
+        margin: 0;
+        padding: 0;
         background: #f7f7f7;
-        font-family: monospace;
         overflow: hidden;
+        height: 100vh;
+        font-family: "Courier New", Courier, monospace;
+        display: flex;
+        flex-direction: column;
       }
-      canvas {
-        border-bottom: 2px solid #535353;
-        margin-top: 50px;
+      #gameCanvas {
         background: white;
-      }
-      .back {
         display: block;
-        margin-top: 20px;
+        width: 100%;
+        height: 100%;
+      }
+      #ui {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        pointer-events: none;
+      }
+      .back-btn {
+        position: absolute;
+        top: 15px;
+        left: 15px;
+        pointer-events: auto;
         text-decoration: none;
         color: #535353;
         font-weight: bold;
+        font-size: 14px;
+        background: rgba(255, 255, 255, 0.7);
+        padding: 5px 10px;
+        border-radius: 5px;
+      }
+      #controls {
+        position: absolute;
+        bottom: 30px;
+        left: 0;
+        width: 100%;
+        display: none;
+        justify-content: space-around;
+        padding: 0 40px;
+        pointer-events: auto;
+      }
+      .btn {
+        width: 70px;
+        height: 70px;
+        background: rgba(0, 0, 0, 0.1);
+        border: 2px solid #535353;
+        border-radius: 50%;
+        color: #535353;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 30px;
+        font-weight: bold;
+      }
+      .btn:active {
+        background: rgba(0, 0, 0, 0.2);
+        transform: scale(0.95);
+      }
+      #restart {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        display: none;
+        pointer-events: auto;
+        text-align: center;
+        color: #535353;
+        font-size: 18px;
+        cursor: pointer;
+      }
+      #restart p {
+        font-size: 30px;
+        margin: 0 0 10px 0;
+      }
+
+      @media (max-width: 768px) {
+        #controls {
+          display: flex;
+        }
       }
     </style>
   </head>
   <body>
-    <canvas id="gameCanvas" width="800" height="200"></canvas>
-    <p>Нажми Пробел, чтобы прыгнуть!</p>
-    <a href="index.html" class="back">← Назад в меню</a>
+    <canvas id="gameCanvas"></canvas>
+    <div id="ui">
+      <a href="index.html" class="back-btn">← Меню</a>
+      <div id="controls">
+        <div id="btnUp" class="btn">↑</div>
+        <div id="btnDown" class="btn">↓</div>
+      </div>
+      <div id="restart" onclick="resetGame()">
+        <p>↻</p>
+        GAME OVER
+      </div>
+    </div>
 
     <script>
       const canvas = document.getElementById("gameCanvas");
       const ctx = canvas.getContext("2d");
+      const restartUI = document.getElementById("restart");
 
-      let score = 0;
-      let gameSpeed = 5;
-      let isGameOver = false;
+      // Базовые параметры (на которые ориентируется логика)
+      const GAME_W = 1000,
+        GAME_H = 300,
+        GROUND_Y = 250;
 
-      const dino = {
-        x: 50,
-        y: 150,
-        w: 40,
-        h: 40,
-        dy: 0,
-        jumpForce: 12,
-        grounded: false,
-        gravity: 0.6,
-      };
-      const obstacles = [];
+      let dino, obstacles, score, gameSpeed, isGameOver, loop, frameCount;
+      let isDucking = false;
 
-      function spawnObstacle() {
-        let size = Math.random() * (50 - 20) + 20;
-        obstacles.push({
-          x: canvas.width,
-          y: canvas.height - size,
-          w: 20,
-          h: size,
-        });
+      function resize() {
+        canvas.width = window.innerWidth * window.devicePixelRatio;
+        canvas.height = window.innerHeight * window.devicePixelRatio;
+        ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
+      }
+      window.addEventListener("resize", resize);
+      resize();
+
+      // Помощь для отрисовки в относительных координатах
+      function getScaleFactor() {
+        return canvas.height / window.devicePixelRatio / GAME_H;
+      }
+      function tx(x) {
+        return x * getScaleFactor();
+      } // по ширине не скейлим, только по высоте, чтобы сохранить пропорции игры
+      function ty(y) {
+        let scale = getScaleFactor();
+        let gameHeightOnScreen = GAME_H * scale;
+        let marginTop =
+          canvas.height / window.devicePixelRatio - gameHeightOnScreen;
+        return y * scale + marginTop;
       }
 
-      function update() {
+      function resetGame() {
+        dino = {
+          x: 50,
+          y: GROUND_Y - 50,
+          w: 40,
+          h: 50,
+          dy: 0,
+          g: 0.8,
+          jump: -15,
+          hNormal: 50,
+          hDuck: 30,
+        };
+        obstacles = [];
+        score = 0;
+        gameSpeed = 6;
+        isGameOver = false;
+        frameCount = 0;
+        restartUI.style.display = "none";
+        if (loop) cancelAnimationFrame(loop);
+        gameLoop();
+      }
+
+      // Логика действий
+      function doJump() {
+        if (dino.y >= GROUND_Y - dino.h && !isGameOver && !isDucking)
+          dino.dy = dino.jump;
+      }
+      function doDuck(duck) {
+        isDucking = duck;
+        if (duck) {
+          dino.h = dino.hDuck;
+          dino.y = GROUND_Y - dino.hDuck;
+        } else {
+          dino.h = dino.hNormal;
+          dino.y = GROUND_Y - dino.hNormal;
+        }
+      }
+
+      // Управление (ПК)
+      window.addEventListener("keydown", (e) => {
+        if (e.code === "Space" || e.code === "ArrowUp") doJump();
+        if (e.code === "ArrowDown") doDuck(true);
+      });
+      window.addEventListener("keyup", (e) => {
+        if (e.code === "ArrowDown") doDuck(false);
+      });
+
+      // Управление (Мобильный)
+      const btnUp = document.getElementById("btnUp");
+      const btnDown = document.getElementById("btnDown");
+      btnUp.addEventListener("touchstart", (e) => {
+        e.preventDefault();
+        doJump();
+      });
+      btnDown.addEventListener("touchstart", (e) => {
+        e.preventDefault();
+        doDuck(true);
+      });
+      btnDown.addEventListener("touchend", (e) => {
+        e.preventDefault();
+        doDuck(false);
+      });
+
+      // Препятствия
+      function spawnObstacle() {
+        if (gameSpeed > 15) gameSpeed = 15; // Кап скорости
+
+        let chance = Math.random();
+        if (score > 200 && chance < 0.4) {
+          // Летающие птицы
+          let type = Math.random();
+          let birdY = type < 0.5 ? GROUND_Y - 30 : GROUND_Y - 80;
+          obstacles.push({ type: "bird", x: GAME_W, y: birdY, w: 40, h: 30 });
+        } else {
+          // Кактусы
+          obstacles.push({
+            type: "cactus",
+            x: GAME_W,
+            y: GROUND_Y - 40,
+            w: 20,
+            h: 40,
+          });
+        }
+      }
+
+      function gameLoop() {
         if (isGameOver) return;
+        let winW = canvas.width / window.devicePixelRatio;
+        let winH = canvas.height / window.devicePixelRatio;
+        let ratio = getScaleFactor();
 
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.fillStyle = "white";
+        ctx.fillRect(0, 0, winW, winH);
 
-        // Гравитация и прыжок
-        dino.dy += dino.gravity;
+        // Физика Дино
+        dino.dy += dino.g;
         dino.y += dino.dy;
-        if (dino.y + dino.h > canvas.height) {
-          dino.y = canvas.height - dino.h;
+        if (dino.y > GROUND_Y - dino.h) {
+          dino.y = GROUND_Y - dino.h;
           dino.dy = 0;
-          dino.grounded = true;
         }
 
-        // Отрисовка Дино
-        ctx.fillStyle = "#535353";
-        ctx.fillRect(dino.x, dino.y, dino.w, dino.h);
+        // Линия земли
+        ctx.strokeStyle = "#535353";
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(0, ty(GROUND_Y));
+        ctx.lineTo(winW, ty(GROUND_Y));
+        ctx.stroke();
 
-        // Препятствия
-        if (Math.random() < 0.02) spawnObstacle();
+        // Отрисовка Дино (простая анимация ног)
+        ctx.fillStyle = "#535353";
+        ctx.fillRect(tx(dino.x), ty(dino.y), tx(dino.w), ty(dino.h));
+        if (dino.y >= GROUND_Y - dino.h && !isGameOver) {
+          // Рисуем ноги если на земле
+          ctx.fillStyle = "white";
+          let legW = tx(8),
+            legH = ty(10);
+          if (frameCount % 10 < 5)
+            ctx.fillRect(tx(dino.x + 8), ty(GROUND_Y - 10), legW, legH);
+          else
+            ctx.fillRect(
+              tx(dino.x + dino.w - 16),
+              ty(GROUND_Y - 10),
+              legW,
+              legH,
+            );
+        }
+
+        // Обработка препятствий
+        let minGap = 200 / (gameSpeed / 6);
+        let nextSpawn = frameCount > (score > 100 ? 60 : 120);
+        if (
+          nextSpawn &&
+          (obstacles.length === 0 ||
+            obstacles[obstacles.length - 1].x <
+              GAME_W - minGap - Math.random() * 200)
+        ) {
+          spawnObstacle();
+        }
+
         for (let i = obstacles.length - 1; i >= 0; i--) {
           let o = obstacles[i];
-          o.x -= gameSpeed;
-          ctx.fillRect(o.x, o.y, o.w, o.h);
+          o.x -= gameSpeed * (1 / ratio); // компенсируем скейл для скорости
 
-          // Коллизия
+          // Отрисовка
+          ctx.fillStyle = o.type === "bird" ? "#e74c3c" : "#229954";
+          if (o.type === "bird") {
+            // Простая анимация крыльев
+            let wingY = frameCount % 20 < 10 ? o.y - 10 : o.y;
+            ctx.fillRect(tx(o.x), ty(wingY), tx(o.w), ty(o.h));
+          } else {
+            ctx.fillRect(tx(o.x), ty(o.y), tx(o.w), ty(o.h));
+          }
+
+          // Коллизия (с учетом скейла)
           if (
-            dino.x < o.x + o.w &&
-            dino.x + dino.w > o.x &&
-            dino.y < o.y + o.h &&
-            dino.y + dino.h > o.y
+            tx(dino.x) < tx(o.x) + tx(o.w) &&
+            tx(dino.x) + tx(dino.w) > tx(o.x) &&
+            ty(dino.y) < ty(o.y) + ty(o.h) &&
+            ty(dino.y) + ty(dino.h) > ty(o.y)
           ) {
-            isGameOver = true;
-            alert("Game Over! Счет: " + Math.floor(score));
-            location.reload();
+            gameOver();
           }
 
           if (o.x + o.w < 0) obstacles.splice(i, 1);
         }
 
-        score += 0.1;
+        // Счет и скорость
+        score += 0.2;
+        ctx.fillStyle = "#535353";
+        ctx.font = `bold ${tx(20)}px Courier New`;
+        ctx.textAlign = "right";
+        ctx.fillText(
+          String(Math.floor(score)).padStart(5, "0"),
+          winW - 20,
+          ty(30),
+        );
         gameSpeed += 0.001;
-        requestAnimationFrame(update);
+
+        frameCount++;
+        loop = requestAnimationFrame(gameLoop);
       }
 
-      window.addEventListener("keydown", (e) => {
-        if (e.code === "Space" && dino.grounded) {
-          dino.dy = -dino.jumpForce;
-          dino.grounded = false;
-        }
-      });
-      canvas.addEventListener("touchstart", () => {
-        if (dino.grounded) {
-          dino.dy = -dino.jumpForce;
-          dino.grounded = false;
-        }
-      });
+      function gameOver() {
+        isGameOver = true;
+        restartUI.style.display = "block";
+        ctx.fillStyle = "rgba(0,0,0,0.3)";
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+      }
 
-      update();
+      resetGame();
     </script>
   </body>
 </html>
