@@ -1,218 +1,247 @@
-<!DOCTYPE html>
-<html lang="ru">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Flappy Bird — Arcade</title>
-<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
-<style>
-*{margin:0;padding:0;box-sizing:border-box}
-body{background:#0a0a0f;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;min-height:100vh;font-family:'Press Start 2P',monospace;overflow-x:hidden}
-body::after{content:'';position:fixed;inset:0;background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,.1) 2px,rgba(0,0,0,.1) 4px);pointer-events:none;z-index:100}
-.back-btn{position:fixed;top:12px;left:12px;z-index:200;background:rgba(0,0,0,.7);border:1px solid #333;color:#aaa;font-family:'Press Start 2P',monospace;font-size:8px;padding:8px 12px;cursor:pointer;text-decoration:none;letter-spacing:1px}
-.back-btn:hover{border-color:#fff;color:#fff}
-#topbar{width:100%;max-width:480px;display:flex;justify-content:space-between;padding:10px 8px;font-size:9px;color:#aaa;background:#111;border-bottom:2px solid #333}
-#topbar span{color:#f39c12}
-#gc{display:block;max-width:480px;width:100%;height:480px;cursor:pointer;image-rendering:pixelated;border-bottom:2px solid #333}
-#msg{width:100%;max-width:480px;padding:8px;text-align:center;font-size:8px;color:#555;background:#0d0d0d}
-#ctrl{display:none;justify-content:center;padding:10px;background:#111;width:100%;max-width:480px}
-@media(pointer:coarse){#ctrl{display:flex}}
-.cb{padding:14px 40px;background:#1a1a2a;border:1px solid #333;color:#f39c12;font-family:'Press Start 2P',monospace;font-size:10px;cursor:pointer;-webkit-tap-highlight-color:transparent}
-.cb:active{background:#2a2a1a}
-</style>
-</head>
-<body>
-<a href="index.html" class="back-btn">← НАЗАД</a>
-<div id="topbar">
-  <div>ОЧКИ &nbsp;<span id="scoreEl">0</span></div>
-  <div>РЕКОРД &nbsp;<span id="hiEl">0</span></div>
-  <div>СКОРОСТЬ &nbsp;<span id="spdEl">x1.0</span></div>
-</div>
-<canvas id="gc"></canvas>
-<div id="msg">ПРОБЕЛ / ТАП — взмах крыльями</div>
-<div id="ctrl"><button class="cb" id="flapBtn">ВЗМАХ!</button></div>
-<script>
-const canvas=document.getElementById('gc');
-const ctx=canvas.getContext('2d');
-const W=canvas.width=480,H=canvas.height=480;
-const scoreEl=document.getElementById('scoreEl'),hiEl=document.getElementById('hiEl'),spdEl=document.getElementById('spdEl');
-const msgEl=document.getElementById('msg');
+<!doctype html>
+<html lang="uk">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"
+    />
+    <title>Flappy Bird</title>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+        font-family: Arial, sans-serif;
+      }
 
-let STATE='idle',score=0,hiScore=0,frame=0,speed=0;
-let bird,pipes=[],particles=[],clouds=[],floatTexts=[];
-const GRAVITY=0.45,FLAP=-8.5,PIPE_W=64,GAP=160,PIPE_SPEED_BASE=2.8;
+      body {
+        background: #70c5ce;
+        overflow: hidden;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        height: 100vh;
+      }
 
-function initBird(){bird={x:120,y:H/2,vy:0,angle:0,wingFrame:0,wingTimer:0,dead:false};}
+      #game {
+        position: relative;
+        width: 100vw;
+        height: 100vh;
+        overflow: hidden;
+        background: linear-gradient(#70c5ce, #c0ecff);
+      }
 
-function resetGame(){
-  initBird();pipes=[];particles=[];floatTexts=[];score=0;frame=0;speed=PIPE_SPEED_BASE;
-  clouds=[{x:80,y:60,w:90,s:.3},{x:280,y:40,w:70,s:.25},{x:400,y:80,w:80,s:.28}];
-  STATE='running';msgEl.textContent='';
-}
+      #bird {
+        position: absolute;
+        width: 40px;
+        height: 40px;
+        background: yellow;
+        border-radius: 50%;
+        left: 20%;
+        top: 50%;
+      }
 
-function flap(){
-  if(STATE==='dead'){resetGame();return;}
-  if(STATE==='idle'){resetGame();return;}
-  if(STATE==='running'&&!bird.dead){bird.vy=FLAP;spawnParts(bird.x,bird.y+10,'#fff',4);}
-}
+      .pipe {
+        position: absolute;
+        width: 60px;
+        background: green;
+        right: 0;
+      }
 
-function spawnParts(x,y,color,n=6){for(let i=0;i<n;i++){const a=Math.random()*Math.PI*2;particles.push({x,y,vx:Math.cos(a)*2,vy:Math.sin(a)*2,life:1,color,r:3});}}
+      .pipe.top {
+        top: 0;
+      }
 
-document.addEventListener('keydown',e=>{if(e.code==='Space'||e.code==='ArrowUp'){e.preventDefault();flap();}});
-canvas.addEventListener('click',flap);
-canvas.addEventListener('touchstart',e=>{e.preventDefault();flap();},{passive:false});
-document.getElementById('flapBtn').addEventListener('touchstart',e=>{e.preventDefault();flap();},{passive:false});
-document.getElementById('flapBtn').addEventListener('mousedown',flap);
+      .pipe.bottom {
+        bottom: 0;
+      }
 
-function spawnPipe(){
-  const minY=80,maxY=H-GAP-80-60;
-  const topH=minY+Math.random()*(maxY-minY);
-  pipes.push({x:W+10,topH,scored:false});
-}
+      #ground {
+        position: absolute;
+        bottom: 0;
+        width: 100%;
+        height: 80px;
+        background: #d9a066;
+      }
 
-function update(){
-  if(STATE!=='running')return;
-  frame++;speed=PIPE_SPEED_BASE+score*.08;
-  spdEl.textContent='x'+speed.toFixed(1);
-  // spawn pipes
-  if(!pipes.length||pipes[pipes.length-1].x<W-200)spawnPipe();
-  // bird physics
-  bird.vy+=GRAVITY;bird.vy=Math.min(bird.vy,12);
-  bird.y+=bird.vy;
-  bird.angle=Math.max(-25,Math.min(60,bird.vy*4));
-  bird.wingTimer++;if(bird.wingTimer>4){bird.wingFrame=(bird.wingFrame+1)%3;bird.wingTimer=0;}
-  // pipe scroll
-  pipes.forEach(p=>p.x-=speed);pipes=pipes.filter(p=>p.x>-PIPE_W-10);
-  // score
-  pipes.forEach(p=>{
-    if(!p.scored&&p.x+PIPE_W<bird.x){p.scored=true;score++;scoreEl.textContent=score;if(score>hiScore){hiScore=score;hiEl.textContent=hiScore;}floatTexts.push({x:bird.x,y:bird.y-30,text:'+1',life:1,vy:-1.2,color:'#ffe600'});}
-  });
-  // clouds
-  clouds.forEach(cl=>cl.x-=speed*.15*cl.s);clouds.forEach(cl=>{if(cl.x+cl.w<0)cl.x=W+cl.w;});
-  // particles
-  particles.forEach(p=>{p.x+=p.vx;p.y+=p.vy;p.vy+=.1;p.life-=.04;});particles=particles.filter(p=>p.life>0);
-  floatTexts.forEach(t=>{t.y+=t.vy;t.life-=.03;});floatTexts=floatTexts.filter(t=>t.life>0);
-  // collision
-  const GROUND_Y=H-60;
-  if(bird.y+20>GROUND_Y||bird.y-20<0){die();return;}
-  for(const p of pipes){
-    if(bird.x+16>p.x+4&&bird.x-16<p.x+PIPE_W-4){
-      if(bird.y-16<p.topH-4||bird.y+16>p.topH+GAP+4){die();return;}
-    }
-  }
-}
+      #scoreBoard {
+        position: absolute;
+        top: 10px;
+        left: 10px;
+        color: white;
+        font-size: 20px;
+        z-index: 10;
+        text-shadow: 1px 1px 2px #000;
+      }
 
-function die(){
-  bird.dead=true;STATE='dead';
-  spawnParts(bird.x,bird.y,'#f39c12',16);
-  spawnParts(bird.x,bird.y,'#e74c3c',8);
-  msgEl.textContent='ПРОБЕЛ / ТАП — заново';
-}
+      #gameOver {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        text-align: center;
+        color: white;
+        display: none;
+        z-index: 20;
+      }
 
-// Drawing helpers
-function drawSky(){
-  // day-night based on score
-  const night=Math.min(score/20,.8);
-  const r=Math.round(78-night*60),g=Math.round(192-night*150),b=Math.round(202-night*160);
-  ctx.fillStyle=`rgb(${r},${g},${b})`;ctx.fillRect(0,0,W,H-60);
-  // ground
-  const gc=['#8bc34a','#558b2f'];
-  ctx.fillStyle=gc[0];ctx.fillRect(0,H-60,W,20);
-  ctx.fillStyle=gc[1];ctx.fillRect(0,H-40,W,40);
-  // ground detail
-  ctx.fillStyle='#4a7a25';
-  for(let i=0;i<8;i++)ctx.fillRect(i*70+((frame*speed*.3)%70),H-60,35,6);
-}
+      #restartBtn {
+        margin-top: 10px;
+        padding: 10px 20px;
+        font-size: 16px;
+        border: none;
+        background: #ffcc00;
+        cursor: pointer;
+        border-radius: 5px;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="game">
+      <div id="bird"></div>
+      <div id="ground"></div>
 
-function drawClouds(){
-  clouds.forEach(cl=>{
-    ctx.fillStyle='rgba(255,255,255,.85)';
-    ctx.beginPath();ctx.ellipse(cl.x,cl.y+20,cl.w/2,12,0,0,Math.PI*2);ctx.fill();
-    ctx.beginPath();ctx.ellipse(cl.x-cl.w*.2,cl.y+10,cl.w*.28,14,0,0,Math.PI*2);ctx.fill();
-    ctx.beginPath();ctx.ellipse(cl.x+cl.w*.18,cl.y+12,cl.w*.24,12,0,0,Math.PI*2);ctx.fill();
-  });
-}
+      <div id="scoreBoard">
+        Score: 0<br />
+        Best: 0
+      </div>
 
-function drawPipe(p){
-  const topH=p.topH,botY=topH+GAP;
-  // shadow
-  ctx.fillStyle='rgba(0,0,0,.15)';ctx.fillRect(p.x+6,0,PIPE_W,topH);ctx.fillRect(p.x+6,botY,PIPE_W,H-botY-60);
-  // body
-  ctx.fillStyle='#2ecc71';ctx.fillRect(p.x,0,PIPE_W,topH);ctx.fillRect(p.x,botY,PIPE_W,H-botY-60);
-  // highlight
-  ctx.fillStyle='#3fe080';ctx.fillRect(p.x+6,0,10,topH);ctx.fillRect(p.x+6,botY,10,H-botY-60);
-  // caps
-  ctx.fillStyle='#27ae60';
-  ctx.fillRect(p.x-6,topH-22,PIPE_W+12,22);ctx.fillRect(p.x-6,botY,PIPE_W+12,22);
-  ctx.fillStyle='#2ecc71';
-  ctx.fillRect(p.x-4,topH-20,PIPE_W+8,20);ctx.fillRect(p.x-4,botY+2,PIPE_W+8,20);
-  ctx.fillStyle='#3fe080';
-  ctx.fillRect(p.x+2,topH-18,10,16);ctx.fillRect(p.x+2,botY+4,10,16);
-  // dark edge
-  ctx.fillStyle='rgba(0,0,0,.2)';ctx.fillRect(p.x+PIPE_W-8,0,8,topH);ctx.fillRect(p.x+PIPE_W-8,botY,8,H-botY-60);
-}
+      <div id="gameOver">
+        <h1>Game Over</h1>
+        <button id="restartBtn">Restart</button>
+      </div>
+    </div>
 
-function drawBird(){
-  const{x,y,angle,wingFrame}=bird;
-  ctx.save();
-  ctx.translate(x,y);ctx.rotate(angle*Math.PI/180);
-  // body
-  ctx.fillStyle='#f39c12';ctx.beginPath();ctx.ellipse(0,0,20,15,0,0,Math.PI*2);ctx.fill();
-  // belly
-  ctx.fillStyle='#f8e090';ctx.beginPath();ctx.ellipse(4,4,12,9,0,0,Math.PI*2);ctx.fill();
-  // eye
-  ctx.fillStyle='white';ctx.beginPath();ctx.arc(10,-4,7,0,Math.PI*2);ctx.fill();
-  ctx.fillStyle='#1a1a2a';ctx.beginPath();ctx.arc(12,-4,4,0,Math.PI*2);ctx.fill();
-  ctx.fillStyle='white';ctx.beginPath();ctx.arc(13,-6,1.5,0,Math.PI*2);ctx.fill();
-  // beak
-  ctx.fillStyle='#e74c3c';ctx.beginPath();ctx.moveTo(18,0);ctx.lineTo(30,-3);ctx.lineTo(18,4);ctx.closePath();ctx.fill();
-  ctx.fillStyle='#c0392b';ctx.beginPath();ctx.moveTo(18,0);ctx.lineTo(30,-3);ctx.lineTo(18,1);ctx.closePath();ctx.fill();
-  // wing
-  ctx.fillStyle='#e67e22';
-  const wingY=wingFrame===0?-8:wingFrame===1?-2:6;
-  ctx.beginPath();ctx.ellipse(-4,wingY,14,7,.2,0,Math.PI*2);ctx.fill();
-  ctx.fillStyle='#f39c12';ctx.beginPath();ctx.ellipse(-3,wingY+1,10,5,.2,0,Math.PI*2);ctx.fill();
-  // tail
-  ctx.fillStyle='#e67e22';ctx.beginPath();ctx.moveTo(-18,0);ctx.lineTo(-30,-6);ctx.lineTo(-28,0);ctx.lineTo(-30,6);ctx.closePath();ctx.fill();
-  ctx.restore();
-}
+    <script>
+      const bird = document.getElementById("bird");
+      const game = document.getElementById("game");
+      const scoreBoard = document.getElementById("scoreBoard");
+      const gameOverScreen = document.getElementById("gameOver");
+      const restartBtn = document.getElementById("restartBtn");
 
-function draw(){
-  drawSky();drawClouds();
-  pipes.forEach(drawPipe);
-  particles.forEach(p=>{ctx.globalAlpha=p.life;ctx.fillStyle=p.color;ctx.beginPath();ctx.arc(p.x,p.y,p.r,0,Math.PI*2);ctx.fill();});ctx.globalAlpha=1;
-  floatTexts.forEach(t=>{ctx.globalAlpha=t.life;ctx.fillStyle=t.color||'#fff';ctx.font='bold 12px "Press Start 2P"';ctx.textAlign='center';ctx.fillText(t.text,t.x,t.y);});ctx.globalAlpha=1;
-  if(!bird.dead||(STATE==='dead'&&frame%6<3))drawBird();
+      let birdY = window.innerHeight / 2;
+      let gravity = 0.5;
+      let velocity = 0;
+      let jump = -8;
 
-  if(STATE==='idle'){
-    ctx.fillStyle='rgba(0,0,0,.55)';ctx.fillRect(0,0,W,H);
-    ctx.fillStyle='#f39c12';ctx.font='bold 20px "Press Start 2P"';ctx.textAlign='center';ctx.fillText('FLAPPY BIRD',W/2,H/2-60);
-    ctx.fillStyle='#fff';ctx.font='10px "Press Start 2P"';ctx.fillText('ТАП / ПРОБЕЛ',W/2,H/2-10);ctx.fillText('ЧТОБЫ НАЧАТЬ',W/2,H/2+15);
-    ctx.fillStyle='#f39c12';ctx.font='8px "Press Start 2P"';ctx.fillText('ПРОЛЕТАЙ МЕЖДУ ТРУБАМИ!',W/2,H/2+55);
-    ctx.fillStyle='#aaa';ctx.font='8px "Press Start 2P"';ctx.fillText('СКОРОСТЬ РАСТЁТ!',W/2,H/2+80);
-    // animated bird preview
-    ctx.save();ctx.translate(W/2,H/2-120);const a=Math.sin(frame*.05)*8;ctx.rotate(a*Math.PI/180);
-    ctx.fillStyle='#f39c12';ctx.beginPath();ctx.ellipse(0,0,18,13,0,0,Math.PI*2);ctx.fill();
-    ctx.fillStyle='#fff';ctx.beginPath();ctx.arc(9,-3,6,0,Math.PI*2);ctx.fill();
-    ctx.fillStyle='#000';ctx.beginPath();ctx.arc(11,-3,3.5,0,Math.PI*2);ctx.fill();
-    ctx.restore();
-  }
-  if(STATE==='dead'){
-    ctx.fillStyle='rgba(0,0,0,.6)';ctx.fillRect(0,0,W,H);
-    ctx.fillStyle='#e74c3c';ctx.font='bold 20px "Press Start 2P"';ctx.textAlign='center';ctx.fillText('GAME OVER',W/2,H/2-60);
-    ctx.fillStyle='#ffe600';ctx.font='bold 16px "Press Start 2P"';ctx.fillText(''+score,W/2,H/2-20);
-    ctx.fillStyle='#aaa';ctx.font='9px "Press Start 2P"';ctx.fillText('РЕКОРД: '+hiScore,W/2,H/2+10);
-    ctx.fillStyle='#fff';ctx.font='10px "Press Start 2P"';ctx.fillText('ПРОБЕЛ / ТАП — СНОВА',W/2,H/2+50);
-    if(score===hiScore&&score>0){ctx.fillStyle='#f39c12';ctx.font='8px "Press Start 2P"';ctx.fillText('НОВЫЙ РЕКОРД!',W/2,H/2+80);}
-  }
-  // score in-game
-  if(STATE==='running'){
-    ctx.fillStyle='rgba(0,0,0,.4)';ctx.fillRect(W/2-40,10,80,36);
-    ctx.fillStyle='#ffe600';ctx.font='bold 20px "Press Start 2P"';ctx.textAlign='center';ctx.fillText(score,W/2,36);
-  }
-}
+      let pipes = [];
+      let score = 0;
+      let best = localStorage.getItem("best") || 0;
+      let gameRunning = true;
 
-(function loop(){frame++;update();draw();requestAnimationFrame(loop);})();
-</script>
-</body>
+      scoreBoard.innerHTML = `Score: 0<br>Best: ${best}`;
+
+      function flap() {
+        if (!gameRunning) return;
+        velocity = jump;
+      }
+
+      document.addEventListener("keydown", (e) => {
+        if (e.code === "Space") flap();
+      });
+
+      document.addEventListener("click", flap);
+      document.addEventListener("touchstart", flap);
+
+      function createPipe() {
+        let gap = 150;
+        let pipeTopHeight = Math.random() * (window.innerHeight / 2);
+
+        let topPipe = document.createElement("div");
+        topPipe.classList.add("pipe", "top");
+        topPipe.style.height = pipeTopHeight + "px";
+        topPipe.style.width = "60px";
+        topPipe.style.left = window.innerWidth + "px";
+
+        let bottomPipe = document.createElement("div");
+        bottomPipe.classList.add("pipe", "bottom");
+        bottomPipe.style.height =
+          window.innerHeight - pipeTopHeight - gap - 80 + "px";
+        bottomPipe.style.width = "60px";
+        bottomPipe.style.left = window.innerWidth + "px";
+
+        game.appendChild(topPipe);
+        game.appendChild(bottomPipe);
+
+        pipes.push({
+          top: topPipe,
+          bottom: bottomPipe,
+          x: window.innerWidth,
+          passed: false,
+        });
+      }
+
+      function resetGame() {
+        location.reload();
+      }
+
+      restartBtn.addEventListener("click", resetGame);
+
+      function update() {
+        if (!gameRunning) return;
+
+        velocity += gravity;
+        birdY += velocity;
+        bird.style.top = birdY + "px";
+
+        if (birdY > window.innerHeight - 120 || birdY < 0) {
+          endGame();
+        }
+
+        pipes.forEach((pipe) => {
+          pipe.x -= 3;
+          pipe.top.style.left = pipe.x + "px";
+          pipe.bottom.style.left = pipe.x + "px";
+
+          let birdLeft = window.innerWidth * 0.2;
+          let birdRight = birdLeft + 40;
+
+          if (
+            birdRight > pipe.x &&
+            birdLeft < pipe.x + 60 &&
+            (birdY < pipe.top.offsetHeight ||
+              birdY > window.innerHeight - pipe.bottom.offsetHeight - 80)
+          ) {
+            endGame();
+          }
+
+          if (!pipe.passed && pipe.x + 60 < birdLeft) {
+            score++;
+            pipe.passed = true;
+            updateScore();
+          }
+
+          if (pipe.x < -60) {
+            pipe.top.remove();
+            pipe.bottom.remove();
+          }
+        });
+
+        pipes = pipes.filter((p) => p.x > -100);
+
+        requestAnimationFrame(update);
+      }
+
+      function updateScore() {
+        scoreBoard.innerHTML = `Score: ${score}<br>Best: ${best}`;
+      }
+
+      function endGame() {
+        gameRunning = false;
+        gameOverScreen.style.display = "block";
+
+        if (score > best) {
+          best = score;
+          localStorage.setItem("best", best);
+        }
+      }
+
+      setInterval(() => {
+        if (gameRunning) createPipe();
+      }, 1800);
+
+      update();
+    </script>
+  </body>
 </html>
