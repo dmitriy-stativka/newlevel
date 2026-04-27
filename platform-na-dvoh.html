@@ -1,0 +1,324 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Pong 2 Players</title>
+
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+        font-family: Arial, sans-serif;
+      }
+
+      body {
+        background: #0f172a;
+        color: white;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        height: 100vh;
+      }
+
+      .game-container {
+        width: 95vw;
+        max-width: 900px;
+        aspect-ratio: 16/9;
+        position: relative;
+        background: #020617;
+        border-radius: 12px;
+        overflow: hidden;
+        border: 2px solid #334155;
+      }
+
+      canvas {
+        width: 100%;
+        height: 100%;
+      }
+
+      .ui {
+        position: absolute;
+        top: 10px;
+        width: 100%;
+        display: flex;
+        justify-content: space-between;
+        padding: 0 20px;
+        font-size: 20px;
+      }
+
+      .center-ui {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        text-align: center;
+      }
+
+      button {
+        padding: 10px 20px;
+        border: none;
+        background: #38bdf8;
+        color: black;
+        font-weight: bold;
+        border-radius: 6px;
+        cursor: pointer;
+        margin-top: 10px;
+      }
+
+      /* Touch controls */
+      .touch-controls {
+        position: absolute;
+        bottom: 0;
+        width: 100%;
+        height: 25%;
+        display: flex;
+      }
+
+      .touch-side {
+        flex: 1;
+        display: flex;
+      }
+
+      .touch-btn {
+        flex: 1;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        font-size: 28px;
+        color: #38bdf8;
+        background: rgba(255, 255, 255, 0.05);
+        user-select: none;
+        touch-action: none; /* КЛЮЧЕВОЕ */
+      }
+
+      .touch-btn:active {
+        background: rgba(56, 189, 248, 0.4);
+      }
+
+      @media (min-width: 768px) {
+        .touch-controls {
+          display: none;
+        }
+      }
+    </style>
+  </head>
+
+  <body>
+    <div class="game-container">
+      <canvas id="game"></canvas>
+
+      <div class="ui">
+        <div id="score1">0</div>
+        <div id="score2">0</div>
+      </div>
+
+      <div class="center-ui" id="menu">
+        <h1>PONG</h1>
+        <button onclick="startGame()">Старт</button>
+      </div>
+
+      <div class="center-ui" id="gameOver" style="display: none">
+        <h2 id="winner"></h2>
+        <button onclick="startGame()">Играть снова</button>
+      </div>
+
+      <!-- Touch -->
+      <div class="touch-controls">
+        <div class="touch-side">
+          <div class="touch-btn" id="p1-up">▲</div>
+          <div class="touch-btn" id="p1-down">▼</div>
+        </div>
+        <div class="touch-side">
+          <div class="touch-btn" id="p2-up">▲</div>
+          <div class="touch-btn" id="p2-down">▼</div>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      const canvas = document.getElementById("game");
+      const ctx = canvas.getContext("2d");
+
+      let width, height;
+
+      function resize() {
+        width = canvas.clientWidth;
+        height = canvas.clientHeight;
+        canvas.width = width;
+        canvas.height = height;
+      }
+      window.addEventListener("resize", resize);
+      resize();
+
+      // Игроки
+      let paddleHeight = 80;
+      let paddleWidth = 10;
+
+      let player1 = { y: 100, score: 0 };
+      let player2 = { y: 100, score: 0 };
+
+      // Мяч
+      let ball = { x: 0, y: 0, vx: 5, vy: 3 };
+
+      let keys = {};
+      let running = false;
+      let maxScore = 5;
+
+      // Клавиатура
+      document.addEventListener("keydown", (e) => (keys[e.key] = true));
+      document.addEventListener("keyup", (e) => (keys[e.key] = false));
+
+      // ✅ НАДЁЖНОЕ управление (Pointer Events)
+      function bindControl(id, key) {
+        const el = document.getElementById(id);
+
+        el.addEventListener("pointerdown", (e) => {
+          e.preventDefault();
+          keys[key] = true;
+        });
+
+        el.addEventListener("pointerup", () => (keys[key] = false));
+        el.addEventListener("pointerleave", () => (keys[key] = false));
+        el.addEventListener("pointercancel", () => (keys[key] = false));
+      }
+
+      // Привязка
+      bindControl("p1-up", "w");
+      bindControl("p1-down", "s");
+      bindControl("p2-up", "ArrowUp");
+      bindControl("p2-down", "ArrowDown");
+
+      // Сброс мяча
+      function resetBall() {
+        ball.x = width / 2;
+        ball.y = height / 2;
+
+        let dir = Math.random() > 0.5 ? 1 : -1;
+        ball.vx = 5 * dir;
+        ball.vy = Math.random() * 4 - 2;
+      }
+
+      // Старт
+      function startGame() {
+        player1.score = 0;
+        player2.score = 0;
+
+        document.getElementById("menu").style.display = "none";
+        document.getElementById("gameOver").style.display = "none";
+
+        countdown(3);
+      }
+
+      function countdown(n) {
+        if (n === 0) {
+          running = true;
+          resetBall();
+          return;
+        }
+
+        ctx.clearRect(0, 0, width, height);
+        ctx.font = "60px Arial";
+        ctx.fillStyle = "white";
+        ctx.textAlign = "center";
+        ctx.fillText(n, width / 2, height / 2);
+
+        setTimeout(() => countdown(n - 1), 1000);
+      }
+
+      // Логика
+      function update() {
+        if (!running) return;
+
+        if (keys["w"]) player1.y -= 6;
+        if (keys["s"]) player1.y += 6;
+
+        if (keys["ArrowUp"]) player2.y -= 6;
+        if (keys["ArrowDown"]) player2.y += 6;
+
+        player1.y = Math.max(0, Math.min(height - paddleHeight, player1.y));
+        player2.y = Math.max(0, Math.min(height - paddleHeight, player2.y));
+
+        ball.x += ball.vx;
+        ball.y += ball.vy;
+
+        if (ball.y <= 0 || ball.y >= height) ball.vy *= -1;
+
+        if (
+          ball.x < paddleWidth &&
+          ball.y > player1.y &&
+          ball.y < player1.y + paddleHeight
+        ) {
+          ball.vx *= -1.1;
+        }
+
+        if (
+          ball.x > width - paddleWidth &&
+          ball.y > player2.y &&
+          ball.y < player2.y + paddleHeight
+        ) {
+          ball.vx *= -1.1;
+        }
+
+        if (ball.x < 0) {
+          player2.score++;
+          resetBall();
+        }
+
+        if (ball.x > width) {
+          player1.score++;
+          resetBall();
+        }
+
+        document.getElementById("score1").textContent = player1.score;
+        document.getElementById("score2").textContent = player2.score;
+
+        if (player1.score >= maxScore || player2.score >= maxScore) {
+          running = false;
+          document.getElementById("gameOver").style.display = "block";
+          document.getElementById("winner").textContent =
+            player1.score > player2.score
+              ? "Игрок 1 победил!"
+              : "Игрок 2 победил!";
+        }
+      }
+
+      // Рендер
+      function draw() {
+        ctx.clearRect(0, 0, width, height);
+
+        ctx.fillStyle = "#38bdf8";
+        ctx.fillRect(0, player1.y, paddleWidth, paddleHeight);
+        ctx.fillRect(width - paddleWidth, player2.y, paddleWidth, paddleHeight);
+
+        ctx.beginPath();
+        ctx.arc(ball.x, ball.y, 8, 0, Math.PI * 2);
+        ctx.fillStyle = "#facc15";
+        ctx.fill();
+
+        ctx.setLineDash([5, 10]);
+        ctx.beginPath();
+        ctx.moveTo(width / 2, 0);
+        ctx.lineTo(width / 2, height);
+        ctx.strokeStyle = "#334155";
+        ctx.stroke();
+      }
+
+      // Цикл
+      function loop() {
+        update();
+        draw();
+        requestAnimationFrame(loop);
+      }
+      loop();
+
+      // Пауза
+      document.addEventListener("keydown", (e) => {
+        if (e.code === "Space") {
+          running = !running;
+        }
+      });
+    </script>
+  </body>
+</html>

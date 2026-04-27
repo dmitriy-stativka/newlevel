@@ -239,6 +239,16 @@
         box-shadow: inset 0 0 60px rgba(0, 229, 255, 0.25);
       }
 
+      .game-card.platform {
+        --clr: #ff6ec7;
+      }
+      .game-card.platform:hover {
+        border-color: #ff6ec7;
+      }
+      .game-card.platform .card-glow {
+        box-shadow: inset 0 0 60px rgba(255, 110, 199, 0.25);
+      }
+
       /* Pixel art preview */
       .game-preview {
         width: 100%;
@@ -415,13 +425,13 @@
     <div class="container">
       <header>
         <div class="logo">ARCADE</div>
-        <div class="tagline">Ретро ігровий зал &middot; 4 гри</div>
+        <div class="tagline">Ретро ігровий зал &middot; 5 ігор</div>
         <div class="insert-coin">&#9658; INSERT COIN &#9658;</div>
       </header>
 
       <div class="deco-scores">
         <div class="deco-stat">
-          <div class="deco-stat-num">4</div>
+          <div class="deco-stat-num">5</div>
           <div class="deco-stat-label">Ігри</div>
         </div>
         <div class="deco-stat">
@@ -541,6 +551,33 @@
               <span class="key">← →</span>
               <span class="key">↑ Обертати</span>
               <span class="key">↓ Швидше</span>
+            </div>
+          </div>
+        </a>
+
+        <!-- Platform на двох -->
+        <a href="platform-na-dvoh.html" class="game-card platform">
+          <div class="card-glow"></div>
+          <div class="badge new">NEW</div>
+          <div class="game-preview" id="preview-platform">
+            <canvas
+              class="preview-canvas"
+              id="c-platform"
+              width="260"
+              height="180"
+            ></canvas>
+          </div>
+          <div class="play-btn">ГРАТИ</div>
+          <div class="game-info">
+            <div class="game-title">Платформа на двох</div>
+            <div class="game-desc">
+              Кооперативна платформер-гра для двох гравців. Автор: Алиса
+              Сапунова.
+            </div>
+            <div class="controls-hint">
+              <span class="key">WASD</span>
+              <span class="key">← → ↑</span>
+              <span class="key">На двох</span>
             </div>
           </div>
         </a>
@@ -832,10 +869,57 @@
         draw();
       }
 
+      function drawPlatformPreview() {
+        const c = document.getElementById("c-platform");
+        const ctx = c.getContext("2d");
+        let t = 0;
+
+        function draw() {
+          // sky
+          ctx.fillStyle = "#2b1b4d";
+          ctx.fillRect(0, 0, 260, 180);
+          ctx.fillStyle = "#4a2b7a";
+          ctx.fillRect(0, 120, 260, 60);
+
+          // platforms
+          ctx.fillStyle = "#a78bfa";
+          ctx.fillRect(20, 130, 70, 10);
+          ctx.fillRect(110, 100, 60, 10);
+          ctx.fillRect(190, 75, 50, 10);
+
+          // player 1
+          const p1x = 30 + Math.sin(t / 25) * 8;
+          ctx.fillStyle = "#ffe600";
+          ctx.fillRect(p1x, 118, 12, 12);
+
+          // player 2
+          const p2x = 140 + Math.cos(t / 28) * 8;
+          const p2y =
+            88 - Math.max(0, Math.sin(((t % 60) / 60) * Math.PI) * 10);
+          ctx.fillStyle = "#00e5ff";
+          ctx.fillRect(p2x, p2y, 12, 12);
+
+          // coins
+          ctx.fillStyle = "#ffcf33";
+          [55, 135, 210].forEach((x, i) => {
+            const y = [118, 88, 63][i] + Math.sin((t + i * 12) / 10) * 2;
+            ctx.beginPath();
+            ctx.arc(x, y, 4, 0, Math.PI * 2);
+            ctx.fill();
+          });
+
+          t++;
+          requestAnimationFrame(draw);
+        }
+
+        draw();
+      }
+
       drawMarioPreview();
       drawDinoPreview();
       drawFlappyPreview();
       drawTetrisPreview();
+      drawPlatformPreview();
     </script>
   </body>
 </html>
