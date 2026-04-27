@@ -249,6 +249,16 @@
         box-shadow: inset 0 0 60px rgba(255, 110, 199, 0.25);
       }
 
+      .game-card.mortal {
+        --clr: #ff3d6b;
+      }
+      .game-card.mortal:hover {
+        border-color: #ff3d6b;
+      }
+      .game-card.mortal .card-glow {
+        box-shadow: inset 0 0 60px rgba(255, 61, 107, 0.3);
+      }
+
       /* Pixel art preview */
       .game-preview {
         width: 100%;
@@ -425,13 +435,13 @@
     <div class="container">
       <header>
         <div class="logo">ARCADE</div>
-        <div class="tagline">Ретро ігровий зал &middot; 5 ігор</div>
+        <div class="tagline">Ретро ігровий зал &middot; 6 ігор</div>
         <div class="insert-coin">&#9658; INSERT COIN &#9658;</div>
       </header>
 
       <div class="deco-scores">
         <div class="deco-stat">
-          <div class="deco-stat-num">5</div>
+          <div class="deco-stat-num">6</div>
           <div class="deco-stat-label">Ігри</div>
         </div>
         <div class="deco-stat">
@@ -578,6 +588,32 @@
               <span class="key">WASD</span>
               <span class="key">← → ↑</span>
               <span class="key">На двох</span>
+            </div>
+          </div>
+        </a>
+
+        <!-- Mortal Kombat -->
+        <a href="mortal-kombat.html" class="game-card mortal">
+          <div class="card-glow"></div>
+          <div class="badge hot">HOT</div>
+          <div class="game-preview" id="preview-mortal">
+            <canvas
+              class="preview-canvas"
+              id="c-mortal"
+              width="260"
+              height="180"
+            ></canvas>
+          </div>
+          <div class="play-btn">ГРАТИ</div>
+          <div class="game-info">
+            <div class="game-title">Mortal Kombat</div>
+            <div class="game-desc">
+              Бойова аркада один на один у стилі ретро. Автор: Металлов Любимир.
+            </div>
+            <div class="controls-hint">
+              <span class="key">A D</span>
+              <span class="key">J K</span>
+              <span class="key">Fight</span>
             </div>
           </div>
         </a>
@@ -915,11 +951,66 @@
         draw();
       }
 
+      function drawMortalPreview() {
+        const c = document.getElementById("c-mortal");
+        const ctx = c.getContext("2d");
+        let t = 0;
+
+        function draw() {
+          ctx.fillStyle = "#120912";
+          ctx.fillRect(0, 0, 260, 180);
+
+          // arena
+          ctx.fillStyle = "#2a1a2a";
+          ctx.fillRect(0, 130, 260, 50);
+          ctx.fillStyle = "#6b1f3c";
+          ctx.fillRect(0, 124, 260, 6);
+
+          // torches
+          [50, 210].forEach((x) => {
+            ctx.fillStyle = "#8d6e63";
+            ctx.fillRect(x, 70, 6, 54);
+            ctx.fillStyle = "#ff9800";
+            ctx.beginPath();
+            ctx.arc(x + 3, 62 + Math.sin(t / 8) * 2, 7, 0, Math.PI * 2);
+            ctx.fill();
+          });
+
+          // fighter 1
+          const p1y = 98 + Math.sin(t / 16) * 2;
+          ctx.fillStyle = "#00e5ff";
+          ctx.fillRect(90, p1y, 14, 28);
+          ctx.fillStyle = "#b3e5fc";
+          ctx.fillRect(93, p1y - 8, 8, 8);
+
+          // fighter 2
+          const p2y = 98 + Math.cos(t / 18) * 2;
+          ctx.fillStyle = "#ff3d6b";
+          ctx.fillRect(150, p2y, 14, 28);
+          ctx.fillStyle = "#ffcdd2";
+          ctx.fillRect(153, p2y - 8, 8, 8);
+
+          // title flash
+          if (Math.floor(t / 20) % 2 === 0) {
+            ctx.fillStyle = "#ffe600";
+            ctx.font = "bold 12px monospace";
+            ctx.textAlign = "center";
+            ctx.fillText("FIGHT!", 130, 34);
+          }
+
+          t++;
+          requestAnimationFrame(draw);
+        }
+
+        draw();
+      }
+
       drawMarioPreview();
       drawDinoPreview();
       drawFlappyPreview();
       drawTetrisPreview();
       drawPlatformPreview();
+      drawMortalPreview();
     </script>
   </body>
 </html>
