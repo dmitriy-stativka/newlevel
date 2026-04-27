@@ -65,15 +65,15 @@
 
     <div class="controls">
       <div></div>
-      <button onclick="dir(0, -1)">↑</button>
+      <button id="btn-up">↑</button>
       <div></div>
 
-      <button onclick="dir(-1, 0)">←</button>
+      <button id="btn-left">←</button>
       <div></div>
-      <button onclick="dir(1, 0)">→</button>
+      <button id="btn-right">→</button>
 
       <div></div>
-      <button onclick="dir(0, 1)">↓</button>
+      <button id="btn-down">↓</button>
       <div></div>
     </div>
 
@@ -113,11 +113,40 @@
         dy = ny;
       }
 
+      function bindDirectionButton(id, nx, ny) {
+        const btn = document.getElementById(id);
+        btn.addEventListener("click", () => dir(nx, ny));
+        btn.addEventListener(
+          "touchstart",
+          (e) => {
+            e.preventDefault();
+            dir(nx, ny);
+          },
+          { passive: false },
+        );
+      }
+
+      bindDirectionButton("btn-up", 0, -1);
+      bindDirectionButton("btn-down", 0, 1);
+      bindDirectionButton("btn-left", -1, 0);
+      bindDirectionButton("btn-right", 1, 0);
+
       document.addEventListener("keydown", (e) => {
-        if (e.key === "ArrowUp") dir(0, -1);
-        if (e.key === "ArrowDown") dir(0, 1);
-        if (e.key === "ArrowLeft") dir(-1, 0);
-        if (e.key === "ArrowRight") dir(1, 0);
+        const key = e.key.toLowerCase();
+
+        if (
+          key === "arrowup" ||
+          key === "arrowdown" ||
+          key === "arrowleft" ||
+          key === "arrowright"
+        ) {
+          e.preventDefault();
+        }
+
+        if (key === "arrowup" || key === "w") dir(0, -1);
+        if (key === "arrowdown" || key === "s") dir(0, 1);
+        if (key === "arrowleft" || key === "a") dir(-1, 0);
+        if (key === "arrowright" || key === "d") dir(1, 0);
       });
 
       function game() {
