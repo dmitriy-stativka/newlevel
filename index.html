@@ -259,6 +259,16 @@
         box-shadow: inset 0 0 60px rgba(255, 61, 107, 0.3);
       }
 
+      .game-card.snake {
+        --clr: #66bb6a;
+      }
+      .game-card.snake:hover {
+        border-color: #66bb6a;
+      }
+      .game-card.snake .card-glow {
+        box-shadow: inset 0 0 60px rgba(102, 187, 106, 0.28);
+      }
+
       /* Pixel art preview */
       .game-preview {
         width: 100%;
@@ -435,13 +445,13 @@
     <div class="container">
       <header>
         <div class="logo">ARCADE</div>
-        <div class="tagline">Ретро ігровий зал &middot; 6 ігор</div>
+        <div class="tagline">Ретро ігровий зал &middot; 7 ігор</div>
         <div class="insert-coin">&#9658; INSERT COIN &#9658;</div>
       </header>
 
       <div class="deco-scores">
         <div class="deco-stat">
-          <div class="deco-stat-num">6</div>
+          <div class="deco-stat-num">7</div>
           <div class="deco-stat-label">Ігри</div>
         </div>
         <div class="deco-stat">
@@ -614,6 +624,33 @@
               <span class="key">A D</span>
               <span class="key">J K</span>
               <span class="key">Fight</span>
+            </div>
+          </div>
+        </a>
+
+        <!-- Snake -->
+        <a href="snake.html" class="game-card snake">
+          <div class="card-glow"></div>
+          <div class="badge classic">CLASSIC</div>
+          <div class="game-preview" id="preview-snake">
+            <canvas
+              class="preview-canvas"
+              id="c-snake"
+              width="260"
+              height="180"
+            ></canvas>
+          </div>
+          <div class="play-btn">ГРАТИ</div>
+          <div class="game-info">
+            <div class="game-title">Змійка</div>
+            <div class="game-desc">
+              Збирай яблука, рости та не вріжся у стіни або хвіст. Автор: Андрій
+              Кононенко.
+            </div>
+            <div class="controls-hint">
+              <span class="key">← ↑ → ↓</span>
+              <span class="key">Пауза</span>
+              <span class="key">Класика</span>
             </div>
           </div>
         </a>
@@ -1005,12 +1042,64 @@
         draw();
       }
 
+      function drawSnakePreview() {
+        const c = document.getElementById("c-snake");
+        const ctx = c.getContext("2d");
+        let t = 0;
+
+        function draw() {
+          ctx.fillStyle = "#0f1b0f";
+          ctx.fillRect(0, 0, 260, 180);
+
+          // board grid
+          ctx.strokeStyle = "rgba(255,255,255,0.06)";
+          for (let x = 0; x <= 13; x++) {
+            ctx.beginPath();
+            ctx.moveTo(20 + x * 16, 10);
+            ctx.lineTo(20 + x * 16, 170);
+            ctx.stroke();
+          }
+          for (let y = 0; y <= 10; y++) {
+            ctx.beginPath();
+            ctx.moveTo(20, 10 + y * 16);
+            ctx.lineTo(228, 10 + y * 16);
+            ctx.stroke();
+          }
+
+          // moving snake
+          const shift = Math.floor(t / 8) % 8;
+          const snake = [
+            [3 + shift, 5],
+            [2 + shift, 5],
+            [1 + shift, 5],
+            [0 + shift, 5],
+          ];
+          snake.forEach(([sx, sy], i) => {
+            if (sx > 12) return;
+            ctx.fillStyle = i === 0 ? "#9cff57" : "#66bb6a";
+            ctx.fillRect(21 + sx * 16, 11 + sy * 16, 14, 14);
+          });
+
+          // apple
+          ctx.fillStyle = "#ff3d6b";
+          ctx.beginPath();
+          ctx.arc(21 + 10 * 16 + 7, 11 + 3 * 16 + 7, 6, 0, Math.PI * 2);
+          ctx.fill();
+
+          t++;
+          requestAnimationFrame(draw);
+        }
+
+        draw();
+      }
+
       drawMarioPreview();
       drawDinoPreview();
       drawFlappyPreview();
       drawTetrisPreview();
       drawPlatformPreview();
       drawMortalPreview();
+      drawSnakePreview();
     </script>
   </body>
 </html>

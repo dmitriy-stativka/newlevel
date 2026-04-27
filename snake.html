@@ -1,0 +1,174 @@
+<!doctype html>
+<html lang="uk">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Snake Slow</title>
+
+    <style>
+      body {
+        margin: 0;
+        background: #111;
+        color: white;
+        font-family: Arial;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+      }
+
+      .top {
+        width: 100%;
+        max-width: 600px;
+        display: flex;
+        justify-content: space-between;
+        padding: 10px;
+        box-sizing: border-box;
+      }
+
+      button {
+        background: #2ecc71;
+        border: none;
+        padding: 8px 12px;
+        border-radius: 6px;
+        color: white;
+        cursor: pointer;
+      }
+
+      canvas {
+        background: #222;
+        border: 2px solid #333;
+        border-radius: 8px;
+        touch-action: none;
+      }
+
+      .controls {
+        margin-top: 10px;
+        display: grid;
+        grid-template-columns: 60px 60px 60px;
+        gap: 6px;
+      }
+
+      .controls button {
+        background: #444;
+        font-size: 18px;
+      }
+    </style>
+  </head>
+
+  <body>
+    <div class="top">
+      <div>Score: <span id="score">0</span></div>
+      <button onclick="restart()">Restart</button>
+    </div>
+
+    <canvas id="c" width="400" height="400"></canvas>
+
+    <div class="controls">
+      <div></div>
+      <button onclick="dir(0, -1)">↑</button>
+      <div></div>
+
+      <button onclick="dir(-1, 0)">←</button>
+      <div></div>
+      <button onclick="dir(1, 0)">→</button>
+
+      <div></div>
+      <button onclick="dir(0, 1)">↓</button>
+      <div></div>
+    </div>
+
+    <script>
+      const c = document.getElementById("c");
+      const x = c.getContext("2d");
+
+      const grid = 20;
+      const cell = c.width / grid;
+
+      let snake, food, dx, dy, score, loop;
+
+      // 🐌 ПОВІЛЬНА ШВИДКІСТЬ
+      const SPEED = 220;
+
+      function init() {
+        snake = [{ x: 10, y: 10 }];
+        dx = 1;
+        dy = 0;
+        score = 0;
+        document.getElementById("score").innerText = 0;
+        food = spawn();
+        clearInterval(loop);
+        loop = setInterval(game, SPEED);
+      }
+
+      function spawn() {
+        return {
+          x: Math.floor(Math.random() * grid),
+          y: Math.floor(Math.random() * grid),
+        };
+      }
+
+      function dir(nx, ny) {
+        if (nx === -dx && ny === -dy) return;
+        dx = nx;
+        dy = ny;
+      }
+
+      document.addEventListener("keydown", (e) => {
+        if (e.key === "ArrowUp") dir(0, -1);
+        if (e.key === "ArrowDown") dir(0, 1);
+        if (e.key === "ArrowLeft") dir(-1, 0);
+        if (e.key === "ArrowRight") dir(1, 0);
+      });
+
+      function game() {
+        let head = { x: snake[0].x + dx, y: snake[0].y + dy };
+
+        // стіна
+        if (head.x < 0 || head.y < 0 || head.x >= grid || head.y >= grid) {
+          return init();
+        }
+
+        // себе
+        for (let s of snake) {
+          if (s.x === head.x && s.y === head.y) {
+            return init();
+          }
+        }
+
+        snake.unshift(head);
+
+        // їжа
+        if (head.x === food.x && head.y === food.y) {
+          score++;
+          document.getElementById("score").innerText = score;
+          food = spawn();
+        } else {
+          snake.pop();
+        }
+
+        draw();
+      }
+
+      function draw() {
+        x.fillStyle = "#222";
+        x.fillRect(0, 0, c.width, c.height);
+
+        // їжа
+        x.fillStyle = "red";
+        x.fillRect(food.x * cell, food.y * cell, cell, cell);
+
+        // змійка
+        for (let i = 0; i < snake.length; i++) {
+          x.fillStyle = i === 0 ? "lime" : "green";
+          x.fillRect(snake[i].x * cell, snake[i].y * cell, cell - 1, cell - 1);
+        }
+      }
+
+      function restart() {
+        init();
+      }
+
+      init();
+    </script>
+  </body>
+</html>
