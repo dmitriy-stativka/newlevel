@@ -1,216 +1,456 @@
 <!doctype html>
-<html lang="ru">
+<html lang="uk">
   <head>
     <meta charset="UTF-8" />
-    <title>Dino Chrome Clone</title>
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"
+    />
+    <title>Dino Runner</title>
     <style>
-      body {
+      :root {
+        --bg: #f5f7fa;
+        --surface: #ffffff;
+        --text: #111827;
+        --accent: #2563eb;
+        --accent-dark: #1d4ed8;
+        --border: #d1d5db;
+        --shadow: 0 10px 30px rgba(0, 0, 0, 0.12);
+      }
+
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --bg: #0f172a;
+          --surface: #1e293b;
+          --text: #f8fafc;
+          --accent: #3b82f6;
+          --accent-dark: #2563eb;
+          --border: #334155;
+          --shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
+        }
+      }
+
+      * {
+        box-sizing: border-box;
         margin: 0;
         padding: 0;
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        height: 100vh;
-        background-color: #f7f7f7;
-        font-family: "Courier New", Courier, monospace;
+        -webkit-tap-highlight-color: transparent;
+      }
+
+      body {
+        font-family: Inter, system-ui, sans-serif;
+        background: var(--bg);
+        color: var(--text);
         overflow: hidden;
         user-select: none;
+        touch-action: manipulation;
       }
 
-      #game-container {
+      #gameWrapper {
+        width: 100vw;
+        height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
         position: relative;
-        width: 800px;
-        height: 200px;
-        background-color: #fff;
-        border-bottom: 2px solid #535353;
+      }
+
+      #gameContainer {
+        width: min(100vw, 1000px);
+        height: min(60vw, 500px);
+        max-height: 100vh;
+        position: relative;
+        overflow: hidden;
+        background: linear-gradient(
+          to bottom,
+          transparent 0%,
+          transparent 75%,
+          rgba(0, 0, 0, 0.03) 100%
+        );
+      }
+
+      #scoreBoard {
+        position: absolute;
+        top: 20px;
+        right: 20px;
+        z-index: 20;
+        font-size: clamp(18px, 3vw, 28px);
+        font-weight: 800;
+        text-align: right;
+      }
+
+      #game {
+        width: 100%;
+        height: 100%;
+        position: relative;
         overflow: hidden;
       }
 
-      #dino {
+      #ground {
         position: absolute;
         bottom: 0;
-        left: 50px;
-        width: 40px;
-        height: 44px;
-        background-color: #535353;
-        transition: height 0.1s;
+        left: 0;
+        width: 200%;
+        height: 6px;
+        background: var(--text);
       }
 
-      /* Стиль когда дино приседает */
-      #dino.ducking {
-        height: 25px;
-        background-color: #757575;
-      }
-
-      .cactus {
+      .dino {
         position: absolute;
-        bottom: 0;
-        width: 20px;
-        height: 40px;
-        background-color: #ff4c4c;
+        left: 8%;
+        bottom: 6px;
+        width: clamp(50px, 8vw, 80px);
+        height: clamp(50px, 8vw, 80px);
+        z-index: 5;
       }
 
-      #score {
-        position: absolute;
-        right: 20px;
-        top: 10px;
-        font-size: 20px;
-        color: #535353;
-      }
-
-      #message {
-        position: absolute;
+      .dino svg {
         width: 100%;
+        height: 100%;
+        display: block;
+      }
+
+      .obstacle {
+        position: absolute;
+        bottom: 6px;
+        width: clamp(28px, 4vw, 45px);
+        height: clamp(55px, 9vw, 90px);
+      }
+
+      .obstacle svg {
+        width: 100%;
+        height: 100%;
+      }
+
+      .overlay {
+        position: absolute;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.25);
+        backdrop-filter: blur(10px);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 30;
+      }
+
+      .panel {
+        background: var(--surface);
+        padding: 40px;
+        border-radius: 28px;
         text-align: center;
-        top: 50%;
-        transform: translateY(-50%);
-        font-size: 24px;
-        color: #535353;
+        box-shadow: var(--shadow);
+        width: min(90vw, 420px);
+      }
+
+      .panel h1 {
+        font-size: clamp(34px, 7vw, 64px);
+        margin-bottom: 12px;
+      }
+
+      .panel p {
+        font-size: clamp(16px, 3vw, 22px);
+        opacity: 0.8;
+        margin-bottom: 28px;
+      }
+
+      button {
+        border: none;
+        background: var(--accent);
+        color: white;
+        padding: 18px 36px;
+        border-radius: 18px;
+        font-size: 20px;
+        font-weight: 700;
+        cursor: pointer;
+        transition: 0.2s;
+      }
+
+      button:hover {
+        background: var(--accent-dark);
+        transform: translateY(-2px);
+      }
+
+      button:active {
+        transform: scale(0.96);
+      }
+
+      #mobileControls {
+        position: fixed;
+        bottom: 20px;
+        left: 20px;
+        right: 20px;
         display: none;
+        justify-content: space-between;
+        gap: 20px;
+        z-index: 50;
+      }
+
+      .touch-btn {
+        flex: 1;
+        height: 80px;
+        border-radius: 24px;
+        font-size: 30px;
+        font-weight: 900;
+        border: none;
+        background: var(--surface);
+        color: var(--text);
+        box-shadow: var(--shadow);
+      }
+
+      .touch-btn:active {
+        transform: scale(0.95);
+      }
+
+      @media (hover: none) and (pointer: coarse) {
+        #mobileControls {
+          display: flex;
+        }
+      }
+
+      .hidden {
+        display: none !important;
       }
     </style>
   </head>
   <body>
-    <div id="game-container">
-      <div id="score">Score: 0</div>
-      <div id="message">
-        GAME OVER<br /><span style="font-size: 14px"
-          >Нажми Пробел, чтобы начать заново</span
-        >
+    <div id="gameWrapper">
+      <div id="gameContainer">
+        <div id="scoreBoard">
+          <div>Score: <span id="score">0</span></div>
+          <div>Best: <span id="best">0</span></div>
+        </div>
+
+        <div id="game">
+          <div id="ground"></div>
+
+          <div class="dino" id="dino">
+            <svg viewBox="0 0 64 64" fill="currentColor">
+              <rect x="20" y="8" width="26" height="26" rx="3" />
+              <rect x="42" y="12" width="12" height="10" />
+              <rect x="10" y="22" width="14" height="10" />
+              <rect x="22" y="34" width="8" height="20" />
+              <rect x="38" y="34" width="8" height="20" />
+              <rect x="46" y="28" width="14" height="8" />
+            </svg>
+          </div>
+        </div>
+
+        <div id="startScreen" class="overlay">
+          <div class="panel">
+            <h1>🦖 Dino Run</h1>
+            <p>Стрибай через перешкоди та встановлюй рекорди!</p>
+            <button id="startBtn">Почати гру</button>
+          </div>
+        </div>
+
+        <div id="gameOverScreen" class="overlay hidden">
+          <div class="panel">
+            <h1>Гру завершено</h1>
+            <p>Ваш результат: <span id="finalScore">0</span></p>
+            <button id="restartBtn">Почати знову</button>
+          </div>
+        </div>
       </div>
-      <div id="dino"></div>
+    </div>
+
+    <div id="mobileControls">
+      <button class="touch-btn" id="jumpBtn">⬆</button>
+      <button class="touch-btn" id="downBtn">⬇</button>
     </div>
 
     <script>
-      const dino = document.getElementById("dino");
-      const container = document.getElementById("game-container");
-      const scoreElement = document.getElementById("score");
-      const message = document.getElementById("message");
+      (() => {
+        const game = document.getElementById("game");
+        const dino = document.getElementById("dino");
+        const scoreEl = document.getElementById("score");
+        const bestEl = document.getElementById("best");
+        const finalScoreEl = document.getElementById("finalScore");
 
-      let isJumping = false;
-      let isDucking = false;
-      let gravity = 0.9;
-      let score = 0;
-      let isGameOver = false;
-      let gameSpeed = 5;
+        const startScreen = document.getElementById("startScreen");
+        const gameOverScreen = document.getElementById("gameOverScreen");
 
-      // Управление
-      document.addEventListener("keydown", function (event) {
-        if (
-          (event.code === "Space" || event.code === "ArrowUp") &&
-          !isJumping &&
-          !isGameOver
-        ) {
+        let best = +localStorage.getItem("dino-best") || 0;
+        bestEl.textContent = best;
+
+        let running = false;
+        let score = 0;
+        let speed = 8;
+        let gravity = 1;
+        let velocity = 0;
+        let jumping = false;
+        let ducking = false;
+        let obstacles = [];
+        let spawnTimer = 0;
+        let lastTime = 0;
+        let elapsed = 0;
+
+        const groundY = 6;
+
+        function createCactus() {
+          const el = document.createElement("div");
+          el.className = "obstacle";
+          el.innerHTML = `
+            <svg viewBox="0 0 40 80" fill="currentColor">
+                <rect x="14" y="10" width="12" height="70" rx="3"/>
+                <rect x="2" y="30" width="12" height="10" rx="2"/>
+                <rect x="2" y="20" width="8" height="10" rx="2"/>
+                <rect x="26" y="42" width="12" height="10" rx="2"/>
+                <rect x="30" y="30" width="8" height="12" rx="2"/>
+            </svg>
+        `;
+          el.x = game.offsetWidth + 20;
+          game.appendChild(el);
+          obstacles.push(el);
+        }
+
+        function jump() {
+          if (!jumping && running) {
+            jumping = true;
+            velocity = -18;
+          }
+        }
+
+        function down(active) {
+          ducking = active;
+          if (active && jumping) velocity += 2.5;
+        }
+
+        function reset() {
+          obstacles.forEach((o) => o.remove());
+          obstacles = [];
+          score = 0;
+          speed = 8;
+          velocity = 0;
+          jumping = false;
+          ducking = false;
+          spawnTimer = 0;
+          elapsed = 0;
+          dino.style.bottom = groundY + "px";
+          dino.style.transform = "scaleY(1)";
+          scoreEl.textContent = "0";
+        }
+
+        function gameOver() {
+          running = false;
+          finalScoreEl.textContent = score;
+
+          if (score > best) {
+            best = score;
+            localStorage.setItem("dino-best", best);
+            bestEl.textContent = best;
+          }
+
+          gameOverScreen.classList.remove("hidden");
+        }
+
+        function collide(a, b) {
+          const r1 = a.getBoundingClientRect();
+          const r2 = b.getBoundingClientRect();
+
+          return !(
+            r1.right - 10 < r2.left + 8 ||
+            r1.left + 10 > r2.right - 8 ||
+            r1.bottom - 10 < r2.top + 8 ||
+            r1.top + 10 > r2.bottom - 8
+          );
+        }
+
+        function update(timestamp) {
+          if (!running) return;
+
+          if (!lastTime) lastTime = timestamp;
+          const delta = (timestamp - lastTime) / 16.67;
+          lastTime = timestamp;
+
+          elapsed += timestamp ? timestamp - (lastTime - delta * 16.67) : 0;
+
+          let y = parseFloat(dino.style.bottom || groundY);
+
+          velocity += gravity * delta;
+          y -= velocity * delta;
+
+          if (y <= groundY) {
+            y = groundY;
+            velocity = 0;
+            jumping = false;
+          }
+
+          dino.style.bottom = y + "px";
+          dino.style.transform =
+            ducking && !jumping ? "scaleY(0.75)" : "scaleY(1)";
+
+          spawnTimer -= delta;
+          if (spawnTimer <= 0) {
+            createCactus();
+            spawnTimer = Math.max(45 - speed * 2, 22) + Math.random() * 30;
+          }
+
+          obstacles.forEach((obs, i) => {
+            obs.x -= speed * delta;
+            obs.style.left = obs.x + "px";
+
+            if (obs.x < -100) {
+              obs.remove();
+              obstacles.splice(i, 1);
+            }
+
+            if (collide(dino, obs)) gameOver();
+          });
+
+          score += delta / 6;
+          scoreEl.textContent = Math.floor(score);
+
+          const seconds = Math.floor(score / 10);
+          speed = 8 + Math.floor(seconds / 10);
+
+          requestAnimationFrame(update);
+        }
+
+        function startGame() {
+          reset();
+          running = true;
+          lastTime = 0;
+          startScreen.classList.add("hidden");
+          gameOverScreen.classList.add("hidden");
+          requestAnimationFrame(update);
+        }
+
+        document.getElementById("startBtn").onclick = startGame;
+        document.getElementById("restartBtn").onclick = startGame;
+
+        document.addEventListener("keydown", (e) => {
+          if (e.code === "Space") {
+            e.preventDefault();
+            jump();
+          }
+          if (e.code === "ArrowDown") {
+            e.preventDefault();
+            down(true);
+          }
+        });
+
+        document.addEventListener("keyup", (e) => {
+          if (e.code === "ArrowDown") down(false);
+        });
+
+        const jumpBtn = document.getElementById("jumpBtn");
+        const downBtn = document.getElementById("downBtn");
+
+        jumpBtn.addEventListener("touchstart", (e) => {
+          e.preventDefault();
           jump();
-        }
-        if (event.code === "ArrowDown" && !isJumping && !isGameOver) {
-          duck(true);
-        }
-        if (event.code === "Space" && isGameOver) {
-          restartGame();
-        }
-      });
+        });
 
-      document.addEventListener("keyup", function (event) {
-        if (event.code === "ArrowDown") {
-          duck(false);
-        }
-      });
+        downBtn.addEventListener("touchstart", (e) => {
+          e.preventDefault();
+          down(true);
+        });
 
-      function jump() {
-        let position = 0;
-        isJumping = true;
-
-        let upInterval = setInterval(() => {
-          if (position >= 120) {
-            clearInterval(upInterval);
-
-            let downInterval = setInterval(() => {
-              if (position <= 0) {
-                clearInterval(downInterval);
-                isJumping = false;
-                position = 0;
-              }
-              position -= 5;
-              dino.style.bottom = position + "px";
-            }, 20);
-          }
-          position += 5;
-          dino.style.bottom = position + "px";
-        }, 20);
-      }
-
-      function duck(state) {
-        isDucking = state;
-        if (state) {
-          dino.classList.add("ducking");
-        } else {
-          dino.classList.remove("ducking");
-        }
-      }
-
-      function createCactus() {
-        if (isGameOver) return;
-
-        const cactus = document.createElement("div");
-        cactus.classList.add("cactus");
-        container.appendChild(cactus);
-
-        let cactusPosition = 800;
-        cactus.style.left = cactusPosition + "px";
-
-        // Случайная высота кактуса
-        let randomHeight = Math.random() * (50 - 20) + 20;
-        cactus.style.height = randomHeight + "px";
-
-        let moveInterval = setInterval(() => {
-          if (isGameOver) {
-            clearInterval(moveInterval);
-            return;
-          }
-
-          cactusPosition -= gameSpeed;
-          cactus.style.left = cactusPosition + "px";
-
-          if (cactusPosition < -20) {
-            clearInterval(moveInterval);
-            container.removeChild(cactus);
-            score++;
-            scoreElement.innerHTML = `Score: ${score}`;
-            if (score % 5 === 0) gameSpeed += 0.2; // Ускорение игры
-          }
-
-          // Проверка столкновения
-          let dinoRect = dino.getBoundingClientRect();
-          let cactusRect = cactus.getBoundingClientRect();
-
-          if (
-            dinoRect.right > cactusRect.left &&
-            dinoRect.left < cactusRect.right &&
-            dinoRect.bottom > cactusRect.top
-          ) {
-            gameOver();
-            clearInterval(moveInterval);
-          }
-        }, 20);
-
-        // Появление следующего кактуса через случайное время
-        if (!isGameOver) {
-          setTimeout(createCactus, Math.random() * (2000 - 700) + 700);
-        }
-      }
-
-      function gameOver() {
-        isGameOver = true;
-        message.style.display = "block";
-      }
-
-      function restartGame() {
-        location.reload(); // Самый простой способ перезапуска
-      }
-
-      // Старт игры
-      createCactus();
+        downBtn.addEventListener("touchend", (e) => {
+          e.preventDefault();
+          down(false);
+        });
+      })();
     </script>
   </body>
 </html>
