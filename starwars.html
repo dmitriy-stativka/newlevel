@@ -133,6 +133,7 @@
         if (e.key === "ArrowRight") keys.right = true;
         if (e.key === "ArrowUp") keys.up = true;
         if (e.key === "ArrowDown") keys.down = true;
+        if (e.key.startsWith("Arrow")) e.preventDefault();
       });
 
       document.addEventListener("keyup", (e) => {
@@ -140,6 +141,7 @@
         if (e.key === "ArrowRight") keys.right = false;
         if (e.key === "ArrowUp") keys.up = false;
         if (e.key === "ArrowDown") keys.down = false;
+        if (e.key.startsWith("Arrow")) e.preventDefault();
       });
 
       canvas.addEventListener("mousemove", (e) => {
@@ -223,7 +225,9 @@
       }
 
       function updateShip() {
-        if (mouse.x !== null) {
+        const hasKeyboardInput = keys.left || keys.right || keys.up || keys.down;
+
+        if (mouse.x !== null && !hasKeyboardInput) {
           ship.x += (mouse.x - ship.x) * 0.18;
           ship.y += (mouse.y - ship.y) * 0.18;
           ship.angle = (mouse.x - ship.x) * 0.003;
