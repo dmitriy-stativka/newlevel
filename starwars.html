@@ -1,0 +1,418 @@
+<!doctype html>
+<html lang="uk">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Space Defender: Machine Gun Edition</title>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+      body {
+        overflow: hidden;
+        background: #000;
+        font-family: Arial, sans-serif;
+        touch-action: none;
+        cursor: crosshair;
+      }
+      canvas {
+        display: block;
+        background:
+          radial-gradient(circle at 20% 20%, #fff 1px, transparent 2px),
+          radial-gradient(circle at 80% 30%, #fff 1px, transparent 2px),
+          radial-gradient(circle at 60% 80%, #fff 1px, transparent 2px),
+          linear-gradient(to bottom, #020617, #000);
+        background-size:
+          250px 250px,
+          350px 350px,
+          450px 450px,
+          100% 100%;
+      }
+      #controls {
+        position: fixed;
+        bottom: 20px;
+        left: 50%;
+        transform: translateX(-50%);
+        display: none;
+        gap: 12px;
+        z-index: 100;
+      }
+      #authors {
+        position: fixed;
+        top: 16px;
+        right: 16px;
+        z-index: 110;
+        color: #ffd54f;
+        background: rgba(0, 0, 0, 0.45);
+        border: 1px solid rgba(255, 213, 79, 0.55);
+        padding: 8px 10px;
+        border-radius: 8px;
+        font-size: 13px;
+      }
+      .btn {
+        width: 80px;
+        height: 80px;
+        border: none;
+        border-radius: 50%;
+        font-size: 34px;
+        color: #fff;
+        background: rgba(0, 255, 255, 0.2);
+        border: 2px solid rgba(0, 255, 255, 0.5);
+        backdrop-filter: blur(10px);
+      }
+      .btn:active {
+        transform: scale(0.9);
+      }
+      @media (max-width: 1024px) {
+        #controls {
+          display: flex;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <canvas id="game"></canvas>
+    <div id="authors">Автори: Кирило Омельченко, Олексій Хижняк</div>
+
+    <div id="controls">
+      <button class="btn" id="leftBtn">◀</button>
+      <button class="btn" id="rightBtn">▶</button>
+    </div>
+
+    <script>
+      const canvas = document.getElementById("game");
+      const ctx = canvas.getContext("2d");
+
+      let w, h;
+      function resize() {
+        w = canvas.width = window.innerWidth;
+        h = canvas.height = window.innerHeight;
+      }
+      resize();
+      window.addEventListener("resize", resize);
+
+      let score = 0;
+      let level = 1;
+      let hp = 1000;
+      let gameOver = false;
+
+      const bullets = [];
+      const enemies = [];
+      const particles = [];
+      const stars = [];
+
+      for (let i = 0; i < 250; i++) {
+        stars.push({
+          x: Math.random() * w,
+          y: Math.random() * h,
+          s: Math.random() * 2 + 1,
+          v: Math.random() * 2 + 0.5,
+        });
+      }
+
+      const ship = {
+        x: w / 2,
+        y: h - 140,
+        angle: 0,
+        speed: 10,
+      };
+
+      const keys = {
+        left: false,
+        right: false,
+        up: false,
+        down: false,
+      };
+
+      let mouse = { x: null, y: null };
+
+      document.addEventListener("keydown", (e) => {
+        if (e.key === "ArrowLeft") keys.left = true;
+        if (e.key === "ArrowRight") keys.right = true;
+        if (e.key === "ArrowUp") keys.up = true;
+        if (e.key === "ArrowDown") keys.down = true;
+      });
+
+      document.addEventListener("keyup", (e) => {
+        if (e.key === "ArrowLeft") keys.left = false;
+        if (e.key === "ArrowRight") keys.right = false;
+        if (e.key === "ArrowUp") keys.up = false;
+        if (e.key === "ArrowDown") keys.down = false;
+      });
+
+      canvas.addEventListener("mousemove", (e) => {
+        mouse.x = e.clientX;
+        mouse.y = e.clientY;
+      });
+
+      function bindButton(id, key) {
+        const btn = document.getElementById(id);
+
+        const start = (e) => {
+          e.preventDefault();
+          keys[key] = true;
+        };
+
+        const stop = (e) => {
+          e.preventDefault();
+          keys[key] = false;
+        };
+
+        ["mousedown", "touchstart"].forEach((ev) =>
+          btn.addEventListener(ev, start, { passive: false }),
+        );
+
+        ["mouseup", "mouseleave", "touchend"].forEach((ev) =>
+          btn.addEventListener(ev, stop, { passive: false }),
+        );
+      }
+
+      bindButton("leftBtn", "left");
+      bindButton("rightBtn", "right");
+
+      function updateLevel() {
+        level = Math.floor(score / 200) + 1;
+      }
+
+      function shoot() {
+        if (gameOver) return;
+
+        bullets.push({
+          x: ship.x - 10,
+          y: ship.y - 20,
+          speed: 18,
+        });
+
+        bullets.push({
+          x: ship.x + 10,
+          y: ship.y - 20,
+          speed: 18,
+        });
+      }
+
+      // ПУЛЕМЕТ
+      setInterval(shoot, 80);
+
+      function spawnEnemy() {
+        if (gameOver) return;
+
+        enemies.push({
+          x: Math.random() * (w - 80) + 40,
+          y: -50,
+          r: 28,
+          speed: 2 + Math.random() * level * 0.6,
+          dx: (Math.random() - 0.5) * 3,
+        });
+
+        setTimeout(spawnEnemy, Math.max(200, 1000 - level * 60));
+      }
+      spawnEnemy();
+
+      function explode(x, y) {
+        for (let i = 0; i < 30; i++) {
+          particles.push({
+            x,
+            y,
+            dx: (Math.random() - 0.5) * 12,
+            dy: (Math.random() - 0.5) * 12,
+            life: 40,
+          });
+        }
+      }
+
+      function updateShip() {
+        if (mouse.x !== null) {
+          ship.x += (mouse.x - ship.x) * 0.18;
+          ship.y += (mouse.y - ship.y) * 0.18;
+          ship.angle = (mouse.x - ship.x) * 0.003;
+        } else {
+          if (keys.left) {
+            ship.x -= ship.speed;
+            ship.angle = -0.4;
+          }
+          if (keys.right) {
+            ship.x += ship.speed;
+            ship.angle = 0.4;
+          }
+          if (keys.up) ship.y -= ship.speed;
+          if (keys.down) ship.y += ship.speed;
+        }
+
+        ship.x = Math.max(50, Math.min(w - 50, ship.x));
+        ship.y = Math.max(80, Math.min(h - 60, ship.y));
+      }
+
+      function update() {
+        if (gameOver) return;
+
+        updateShip();
+
+        stars.forEach((s) => {
+          s.y += s.v;
+          if (s.y > h) {
+            s.y = 0;
+            s.x = Math.random() * w;
+          }
+        });
+
+        for (let i = bullets.length - 1; i >= 0; i--) {
+          bullets[i].y -= bullets[i].speed;
+          if (bullets[i].y < 0) bullets.splice(i, 1);
+        }
+
+        for (let i = enemies.length - 1; i >= 0; i--) {
+          const e = enemies[i];
+          e.y += e.speed;
+          e.x += e.dx;
+
+          if (e.x < 30 || e.x > w - 30) e.dx *= -1;
+
+          if (e.y > h + 50) {
+            enemies.splice(i, 1);
+            hp -= 10;
+            if (hp <= 0) {
+              gameOver = true;
+              setTimeout(() => {
+                alert(`Гру завершено!\nОчки: ${score}\nРівень: ${level}`);
+                location.reload();
+              }, 100);
+            }
+            continue;
+          }
+
+          for (let j = bullets.length - 1; j >= 0; j--) {
+            const b = bullets[j];
+            const dx = b.x - e.x;
+            const dy = b.y - e.y;
+
+            if (Math.sqrt(dx * dx + dy * dy) < e.r) {
+              bullets.splice(j, 1);
+              enemies.splice(i, 1);
+              explode(e.x, e.y);
+              score += 10;
+              updateLevel();
+              break;
+            }
+          }
+        }
+
+        for (let i = particles.length - 1; i >= 0; i--) {
+          const p = particles[i];
+          p.x += p.dx;
+          p.y += p.dy;
+          p.life--;
+          if (p.life <= 0) particles.splice(i, 1);
+        }
+      }
+
+      function drawShip() {
+        ctx.save();
+        ctx.translate(ship.x, ship.y);
+        ctx.rotate(ship.angle);
+
+        ctx.shadowBlur = 30;
+        ctx.shadowColor = "#00ffff";
+
+        ctx.fillStyle = "#00e5ff";
+        ctx.beginPath();
+        ctx.moveTo(0, -35);
+        ctx.lineTo(-25, 25);
+        ctx.lineTo(0, 10);
+        ctx.lineTo(25, 25);
+        ctx.closePath();
+        ctx.fill();
+
+        ctx.fillStyle = "#fff";
+        ctx.beginPath();
+        ctx.arc(0, -5, 7, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.fillStyle = "#ff6600";
+        ctx.beginPath();
+        ctx.moveTo(-10, 25);
+        ctx.lineTo(0, 55 + Math.random() * 10);
+        ctx.lineTo(10, 25);
+        ctx.fill();
+
+        ctx.restore();
+      }
+
+      function draw() {
+        ctx.clearRect(0, 0, w, h);
+
+        stars.forEach((s) => {
+          ctx.fillStyle = "#fff";
+          ctx.fillRect(s.x, s.y, s.s, s.s);
+        });
+
+        bullets.forEach((b) => {
+          ctx.strokeStyle = "#00ffff";
+          ctx.lineWidth = 4;
+          ctx.shadowBlur = 15;
+          ctx.shadowColor = "#00ffff";
+          ctx.beginPath();
+          ctx.moveTo(b.x, b.y);
+          ctx.lineTo(b.x, b.y - 18);
+          ctx.stroke();
+        });
+
+        enemies.forEach((e) => {
+          ctx.save();
+          ctx.translate(e.x, e.y);
+
+          ctx.shadowBlur = 25;
+          ctx.shadowColor = "#ff00ff";
+
+          ctx.fillStyle = "#ff00ff";
+          ctx.beginPath();
+          ctx.ellipse(0, 0, 30, 12, 0, 0, Math.PI * 2);
+          ctx.fill();
+
+          ctx.fillStyle = "#7df9ff";
+          ctx.beginPath();
+          ctx.ellipse(0, -10, 18, 10, 0, 0, Math.PI * 2);
+          ctx.fill();
+
+          ctx.restore();
+        });
+
+        particles.forEach((p) => {
+          ctx.fillStyle = `rgba(255,165,0,${p.life / 40})`;
+          ctx.beginPath();
+          ctx.arc(p.x, p.y, 3, 0, Math.PI * 2);
+          ctx.fill();
+        });
+
+        drawShip();
+
+        ctx.fillStyle = "#fff";
+        ctx.font = "bold 28px Arial";
+        ctx.fillText(`Очки: ${score}`, 20, 40);
+        ctx.fillText(`Рівень: ${level}`, 20, 80);
+        ctx.fillText(`HP: ${hp}`, 20, 120);
+
+        ctx.fillStyle = "#222";
+        ctx.fillRect(20, 140, 420, 28);
+
+        let color = "#00ff00";
+        if (hp < 600) color = "#ffff00";
+        if (hp < 300) color = "#ff0000";
+
+        ctx.fillStyle = color;
+        ctx.fillRect(20, 140, (hp / 1000) * 420, 28);
+
+        ctx.strokeStyle = "#fff";
+        ctx.strokeRect(20, 140, 420, 28);
+      }
+
+      function loop() {
+        update();
+        draw();
+        requestAnimationFrame(loop);
+      }
+      loop();
+    </script>
+  </body>
+</html>
