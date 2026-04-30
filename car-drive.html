@@ -1,0 +1,311 @@
+<!doctype html>
+<html lang="uk">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Monster Car Game</title>
+
+    <style>
+      body {
+        margin: 0;
+        overflow: hidden;
+        font-family: Arial;
+      }
+
+      canvas {
+        display: block;
+      }
+
+      /* UI */
+      .ui {
+        position: absolute;
+        top: 10px;
+        left: 10px;
+        color: white;
+        font-size: 20px;
+      }
+
+      /* mobile buttons */
+      .controls {
+        position: absolute;
+        bottom: 20px;
+        width: 100%;
+        display: flex;
+        justify-content: center;
+        gap: 15px;
+      }
+
+      .btn {
+        width: 60px;
+        height: 60px;
+        background: rgba(0, 0, 0, 0.4);
+        color: white;
+        font-size: 24px;
+        border-radius: 50%;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+      }
+    </style>
+  </head>
+
+  <body>
+    <canvas id="game"></canvas>
+    <div class="ui">Coins: <span id="score">0</span></div>
+
+    <div class="controls">
+      <div class="btn" id="left">←</div>
+      <div class="btn" id="jump">↑</div>
+      <div class="btn" id="right">→</div>
+    </div>
+
+    <script>
+      const canvas = document.getElementById("game");
+      const ctx = canvas.getContext("2d");
+
+      function resize() {
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+      }
+      resize();
+      window.addEventListener("resize", resize);
+
+      /* --- PLAYER --- */
+      let car = {
+        x: 100,
+        y: 0,
+        width: 80,
+        height: 50,
+        dy: 0,
+        gravity: 0.6,
+        jumpPower: -12,
+        grounded: false,
+      };
+
+      /* --- WORLD --- */
+      let ground = 0;
+      let scroll = 0;
+
+      let coins = [];
+      let obstacles = [];
+      let bullets = [];
+      let score = 0;
+
+      /* --- SPAWN --- */
+      function spawnCoin() {
+        coins.push({
+          x: canvas.width + 50,
+          y: ground - Math.random() * 150 - 50,
+          size: 20,
+        });
+      }
+
+      function spawnObstacle() {
+        obstacles.push({
+          x: canvas.width + 50,
+          y: ground - 40,
+          width: 40,
+          height: 40,
+        });
+      }
+
+      setInterval(spawnCoin, 1500);
+      setInterval(spawnObstacle, 2500);
+
+      /* --- INPUT --- */
+      let keys = {};
+
+      document.addEventListener("keydown", (e) => (keys[e.key] = true));
+      document.addEventListener("keyup", (e) => (keys[e.key] = false));
+
+      /* mobile */
+      left.ontouchstart = () => (keys["ArrowLeft"] = true);
+      left.ontouchend = () => (keys["ArrowLeft"] = false);
+
+      right.ontouchstart = () => (keys["ArrowRight"] = true);
+      right.ontouchend = () => (keys["ArrowRight"] = false);
+
+      jump.ontouchstart = () => (keys["ArrowUp"] = true);
+      jump.ontouchend = () => (keys["ArrowUp"] = false);
+
+      /* --- UPDATE --- */
+      function update() {
+        ground = canvas.height - 80;
+
+        // gravity
+        car.dy += car.gravity;
+        car.y += car.dy;
+
+        // ground collision
+        if (car.y + car.height > ground) {
+          car.y = ground - car.height;
+          car.dy = 0;
+          car.grounded = true;
+        } else {
+          car.grounded = false;
+        }
+
+        // jump
+        if (keys["ArrowUp"] && car.grounded) {
+          car.dy = car.jumpPower;
+        }
+
+        // move
+        if (keys["ArrowLeft"]) car.x -= 5;
+        if (keys["ArrowRight"]) car.x += 5;
+
+        car.x = Math.max(0, Math.min(canvas.width - car.width, car.x));
+
+        // shoot (SPACE)
+        if (keys[" "] || keys["Space"]) {
+          bullets.push({
+            x: car.x + car.width,
+            y: car.y + car.height / 2,
+            width: 10,
+            height: 4,
+            speed: 10,
+          });
+          keys[" "] = false;
+          keys["Space"] = false;
+        }
+
+        // bullets move
+        bullets.forEach((b) => (b.x += b.speed));
+        bullets = bullets.filter((b) => b.x < canvas.width);
+
+        // move world
+        scroll += 5;
+        coins.forEach((c) => (c.x -= 5));
+        obstacles.forEach((o) => (o.x -= 6));
+
+        /* collision coins */
+        coins = coins.filter((c) => {
+          if (
+            c.x < car.x + car.width &&
+            c.x + c.size > car.x &&
+            c.y < car.y + car.height &&
+            c.y + c.size > car.y
+          ) {
+            score++;
+            scoreEl.textContent = score;
+            return false;
+          }
+          return c.x > -20;
+        });
+
+        /* bullets vs obstacles */
+        obstacles = obstacles.filter((o) => {
+          let hit = false;
+
+          bullets = bullets.filter((b) => {
+            if (
+              b.x < o.x + o.width &&
+              b.x + b.width > o.x &&
+              b.y < o.y + o.height &&
+              b.y + b.height > o.y
+            ) {
+              hit = true;
+              return false;
+            }
+            return true;
+          });
+
+          if (hit) {
+            score++;
+            scoreEl.textContent = score;
+            return false;
+          }
+
+          // car collision
+          if (
+            o.x < car.x + car.width &&
+            o.x + o.width > car.x &&
+            o.y < car.y + car.height &&
+            o.y + o.height > car.y
+          ) {
+            alert("Game Over! Coins: " + score);
+            location.reload();
+          }
+
+          return o.x > -50;
+        });
+      }
+
+      /* --- DRAW --- */
+      function drawBackground() {
+        let sky = ctx.createLinearGradient(0, 0, 0, canvas.height);
+        sky.addColorStop(0, "#87CEEB");
+        sky.addColorStop(1, "#ffffff");
+        ctx.fillStyle = sky;
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        ctx.fillStyle = "#333";
+        ctx.fillRect(0, ground, canvas.width, canvas.height - ground);
+
+        ctx.strokeStyle = "white";
+        ctx.lineWidth = 4;
+        for (let i = 0; i < canvas.width; i += 40) {
+          ctx.beginPath();
+          ctx.moveTo(i - (scroll % 40), ground + 30);
+          ctx.lineTo(i + 20 - (scroll % 40), ground + 30);
+          ctx.stroke();
+        }
+      }
+
+      function drawCar() {
+        // body
+        ctx.fillStyle = "red";
+        ctx.fillRect(car.x, car.y, car.width, car.height);
+
+        // wheels
+        ctx.fillStyle = "black";
+        ctx.beginPath();
+        ctx.arc(car.x + 15, car.y + car.height, 18, 0, Math.PI * 2);
+        ctx.arc(car.x + car.width - 15, car.y + car.height, 18, 0, Math.PI * 2);
+        ctx.fill();
+
+        // gun
+        ctx.fillStyle = "darkred";
+        ctx.fillRect(car.x + car.width, car.y + 10, 20, 10);
+      }
+
+      function draw() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+        drawBackground();
+        drawCar();
+
+        // coins
+        ctx.fillStyle = "gold";
+        coins.forEach((c) => {
+          ctx.beginPath();
+          ctx.arc(c.x, c.y, c.size / 2, 0, Math.PI * 2);
+          ctx.fill();
+        });
+
+        // obstacles
+        ctx.fillStyle = "brown";
+        obstacles.forEach((o) => {
+          ctx.fillRect(o.x, o.y, o.width, o.height);
+        });
+
+        // bullets
+        ctx.fillStyle = "black";
+        bullets.forEach((b) => {
+          ctx.fillRect(b.x, b.y, b.width, b.height);
+        });
+      }
+
+      /* --- LOOP --- */
+      function loop() {
+        update();
+        draw();
+        requestAnimationFrame(loop);
+      }
+
+      const scoreEl = document.getElementById("score");
+
+      loop();
+    </script>
+  </body>
+</html>
