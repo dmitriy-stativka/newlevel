@@ -1,0 +1,292 @@
+<!doctype html>
+<html lang="uk">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Шарік — заряджений стрибок</title>
+
+    <style>
+      body {
+        margin: 0;
+        overflow: hidden;
+        background: linear-gradient(#87ceeb, #e0f7ff);
+        font-family: sans-serif;
+      }
+
+      canvas {
+        display: block;
+      }
+
+      /* Рахунок */
+      #score {
+        position: fixed;
+        top: 10px;
+        left: 10px;
+        font-size: 22px;
+        background: rgba(255, 255, 255, 0.7);
+        padding: 5px 10px;
+        border-radius: 10px;
+      }
+
+      /* Заряд */
+      #chargeBar {
+        position: fixed;
+        top: 50px;
+        left: 10px;
+        width: 150px;
+        height: 10px;
+        background: rgba(0, 0, 0, 0.2);
+        border-radius: 5px;
+        overflow: hidden;
+      }
+
+      #chargeFill {
+        height: 100%;
+        width: 0%;
+        background: blue;
+      }
+
+      /* Кнопки */
+      .controls {
+        position: fixed;
+        bottom: 10px;
+        width: 100%;
+        display: flex;
+        justify-content: center;
+        gap: 20px;
+      }
+
+      button {
+        padding: 15px 20px;
+        font-size: 20px;
+        border: none;
+        border-radius: 10px;
+        background: #333;
+        color: white;
+        opacity: 0.7;
+        touch-action: manipulation;
+        user-select: none;
+      }
+    </style>
+  </head>
+
+  <body>
+    <canvas id="game"></canvas>
+
+    <div id="score">Бали: 0</div>
+    <div id="chargeBar"><div id="chargeFill"></div></div>
+
+    <div class="controls">
+      <button id="btnLeft">⬅️</button>
+      <button id="btnJump">⬆️</button>
+      <button id="btnRight">➡️</button>
+    </div>
+
+    <script>
+      const canvas = document.getElementById("game");
+      const ctx = canvas.getContext("2d");
+
+      const scoreEl = document.getElementById("score");
+      const chargeFill = document.getElementById("chargeFill");
+      const btnLeft = document.getElementById("btnLeft");
+      const btnJump = document.getElementById("btnJump");
+      const btnRight = document.getElementById("btnRight");
+
+      function resize() {
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+      }
+      window.addEventListener("resize", resize);
+      resize();
+
+      let gravity = 0.6;
+      let score = 0;
+
+      let player = {
+        x: 100,
+        y: 0,
+        radius: 20,
+        dy: 0,
+        grounded: false,
+      };
+
+      let obstacles = [];
+      let frame = 0;
+
+      // 🔥 заряд стрибка
+      let charging = false;
+      let charge = 0;
+      let maxCharge = 25;
+      let chargeSpeed = 0.5;
+
+      function spawnObstacle() {
+        obstacles.push({
+          x: canvas.width,
+          y: canvas.height - 40,
+          w: 30 + Math.random() * 30,
+          h: 30 + Math.random() * 40,
+        });
+      }
+
+      function moveLeft() {
+        player.x -= 7;
+      }
+      function moveRight() {
+        player.x += 7;
+      }
+
+      function startCharge() {
+        if (player.grounded) {
+          charging = true;
+        }
+      }
+
+      function releaseJump() {
+        if (charging) {
+          player.dy = -charge;
+          charging = false;
+          charge = 0;
+          player.grounded = false;
+        }
+      }
+
+      const controls = {
+        left: false,
+        right: false,
+      };
+
+      function bindHold(button, onPress, onRelease) {
+        button.addEventListener("touchstart", (e) => {
+          e.preventDefault();
+          onPress();
+        });
+        button.addEventListener("touchend", onRelease);
+        button.addEventListener("touchcancel", onRelease);
+        button.addEventListener("mousedown", onPress);
+        button.addEventListener("mouseup", onRelease);
+        button.addEventListener("mouseleave", onRelease);
+      }
+
+      bindHold(
+        btnLeft,
+        () => {
+          controls.left = true;
+        },
+        () => {
+          controls.left = false;
+        },
+      );
+
+      bindHold(
+        btnRight,
+        () => {
+          controls.right = true;
+        },
+        () => {
+          controls.right = false;
+        },
+      );
+
+      bindHold(btnJump, startCharge, releaseJump);
+
+      document.addEventListener("keydown", (e) => {
+        if (e.code.startsWith("Arrow") || e.code === "Space")
+          e.preventDefault();
+        if ((e.code === "ArrowUp" || e.code === "Space") && player.grounded) {
+          charging = true;
+        }
+        if (e.code === "ArrowLeft") controls.left = true;
+        if (e.code === "ArrowRight") controls.right = true;
+      });
+
+      document.addEventListener("keyup", (e) => {
+        if (e.code.startsWith("Arrow") || e.code === "Space")
+          e.preventDefault();
+        if (e.code === "ArrowUp" || e.code === "Space") {
+          releaseJump();
+        }
+        if (e.code === "ArrowLeft") controls.left = false;
+        if (e.code === "ArrowRight") controls.right = false;
+      });
+
+      function update() {
+        frame++;
+
+        // рахунок
+        score += 0.1;
+        scoreEl.innerText = "Бали: " + Math.floor(score);
+
+        // заряд
+        if (charging) {
+          charge += chargeSpeed;
+          if (charge > maxCharge) charge = maxCharge;
+        }
+        chargeFill.style.width = (charge / maxCharge) * 100 + "%";
+
+        // фізика
+        player.dy += gravity;
+        player.y += player.dy;
+
+        if (player.y + player.radius > canvas.height - 20) {
+          player.y = canvas.height - 20 - player.radius;
+          player.dy = 0;
+          player.grounded = true;
+        }
+
+        if (controls.left) moveLeft();
+        if (controls.right) moveRight();
+        player.x = Math.max(
+          player.radius,
+          Math.min(canvas.width - player.radius, player.x),
+        );
+
+        if (frame % 90 === 0) spawnObstacle();
+
+        for (let i = 0; i < obstacles.length; i++) {
+          obstacles[i].x -= 5;
+
+          let o = obstacles[i];
+
+          if (
+            player.x + player.radius > o.x &&
+            player.x - player.radius < o.x + o.w &&
+            player.y + player.radius > o.y - o.h
+          ) {
+            alert("Ти програв 😢\nБали: " + Math.floor(score));
+            location.reload();
+          }
+        }
+
+        obstacles = obstacles.filter((o) => o.x + o.w > 0);
+      }
+
+      function draw() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+        // земля
+        ctx.fillStyle = "green";
+        ctx.fillRect(0, canvas.height - 20, canvas.width, 20);
+
+        // шарик
+        ctx.beginPath();
+        ctx.arc(player.x, player.y, player.radius, 0, Math.PI * 2);
+        ctx.fillStyle = "red";
+        ctx.fill();
+
+        // перешкоди
+        ctx.fillStyle = "black";
+        obstacles.forEach((o) => {
+          ctx.fillRect(o.x, o.y - o.h, o.w, o.h);
+        });
+      }
+
+      function loop() {
+        update();
+        draw();
+        requestAnimationFrame(loop);
+      }
+
+      loop();
+    </script>
+  </body>
+</html>

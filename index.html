@@ -289,6 +289,16 @@
         box-shadow: inset 0 0 60px rgba(100, 181, 246, 0.28);
       }
 
+      .game-card.bounce {
+        --clr: #a78bfa;
+      }
+      .game-card.bounce:hover {
+        border-color: #a78bfa;
+      }
+      .game-card.bounce .card-glow {
+        box-shadow: inset 0 0 60px rgba(167, 139, 250, 0.3);
+      }
+
       /* Pixel art preview */
       .game-preview {
         width: 100%;
@@ -465,13 +475,13 @@
     <div class="container">
       <header>
         <div class="logo">ARCADE</div>
-        <div class="tagline">Ретро ігровий зал &middot; 9 ігор</div>
+        <div class="tagline">Ретро ігровий зал &middot; 10 ігор</div>
         <div class="insert-coin">&#9658; INSERT COIN &#9658;</div>
       </header>
 
       <div class="deco-scores">
         <div class="deco-stat">
-          <div class="deco-stat-num">9</div>
+          <div class="deco-stat-num">10</div>
           <div class="deco-stat-label">Ігри</div>
         </div>
         <div class="deco-stat">
@@ -724,6 +734,32 @@
               <span class="key">← →</span>
               <span class="key">↑</span>
               <span class="key">Drive</span>
+            </div>
+          </div>
+        </a>
+
+        <!-- Bounce -->
+        <a href="bounce.html" class="game-card bounce">
+          <div class="card-glow"></div>
+          <div class="badge new">NEW</div>
+          <div class="game-preview" id="preview-bounce">
+            <canvas
+              class="preview-canvas"
+              id="c-bounce"
+              width="260"
+              height="180"
+            ></canvas>
+          </div>
+          <div class="play-btn">ГРАТИ</div>
+          <div class="game-info">
+            <div class="game-title">Bounce</div>
+            <div class="game-desc">
+              Аркадна гра з відскоком м'яча. Автор: Зимуха Лізи.
+            </div>
+            <div class="controls-hint">
+              <span class="key">← →</span>
+              <span class="key">Пробіл</span>
+              <span class="key">Bounce</span>
             </div>
           </div>
         </a>
@@ -1260,6 +1296,43 @@
         draw();
       }
 
+      function drawBouncePreview() {
+        const c = document.getElementById("c-bounce");
+        const ctx = c.getContext("2d");
+        let t = 0;
+
+        function draw() {
+          ctx.fillStyle = "#121426";
+          ctx.fillRect(0, 0, 260, 180);
+
+          // platform
+          const px = 90 + Math.sin(t / 25) * 36;
+          ctx.fillStyle = "#a78bfa";
+          ctx.fillRect(px, 158, 80, 10);
+
+          // ball
+          const by = 42 + Math.abs(Math.sin(t / 16)) * 105;
+          ctx.fillStyle = "#ffffff";
+          ctx.beginPath();
+          ctx.arc(130, by, 9, 0, Math.PI * 2);
+          ctx.fill();
+
+          // bricks
+          const colors = ["#64b5f6", "#4dd0e1", "#81c784", "#ffd54f"];
+          for (let row = 0; row < 2; row++) {
+            for (let col = 0; col < 6; col++) {
+              ctx.fillStyle = colors[(row + col) % colors.length];
+              ctx.fillRect(22 + col * 36, 20 + row * 16, 30, 10);
+            }
+          }
+
+          t++;
+          requestAnimationFrame(draw);
+        }
+
+        draw();
+      }
+
       drawMarioPreview();
       drawDinoPreview();
       drawFlappyPreview();
@@ -1269,6 +1342,7 @@
       drawSnakePreview();
       drawStarwarsPreview();
       drawCardrivePreview();
+      drawBouncePreview();
     </script>
   </body>
 </html>
