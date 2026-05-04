@@ -1,0 +1,307 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Tetris</title>
+
+    <style>
+      body {
+        margin: 0;
+        background: #0f172a;
+        color: white;
+        font-family: Arial, sans-serif;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+      }
+
+      h1 {
+        margin: 10px;
+      }
+
+      #gameContainer {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+      }
+
+      canvas {
+        background: #020617;
+        border-radius: 12px;
+        box-shadow: 0 0 20px #000;
+      }
+
+      #info {
+        margin: 10px;
+        text-align: center;
+      }
+
+      button {
+        margin-top: 10px;
+        padding: 10px 20px;
+        border: none;
+        border-radius: 10px;
+        background: #22c55e;
+        color: white;
+        font-size: 16px;
+      }
+
+      #controls {
+        display: flex;
+        gap: 10px;
+        margin-top: 15px;
+      }
+
+      .control-btn {
+        padding: 15px;
+        font-size: 18px;
+        border-radius: 12px;
+        background: #1e293b;
+        color: white;
+        border: none;
+      }
+
+      @media (min-width: 768px) {
+        #controls {
+          display: none;
+        }
+      }
+    </style>
+  </head>
+
+  <body>
+    <h1>Тетрис</h1>
+
+    <div id="gameContainer">
+      <canvas id="tetris"></canvas>
+
+      <div id="info">
+        <div>Очки: <span id="score">0</span></div>
+        <div>Уровень: <span id="level">1</span></div>
+      </div>
+
+      <button onclick="restartGame()">Начать заново</button>
+
+      <div id="controls">
+        <button class="control-btn" onclick="move(-1)">◀</button>
+        <button class="control-btn" onclick="move(1)">▶</button>
+        <button class="control-btn" onclick="rotate()">⟳</button>
+        <button class="control-btn" onclick="drop()">▼</button>
+      </div>
+    </div>
+
+    <script>
+      const canvas = document.getElementById("tetris");
+      const ctx = canvas.getContext("2d");
+
+      let scale = 20;
+      let cols = 10;
+      let rows = 20;
+
+      function resize() {
+        const size = Math.min(window.innerWidth * 0.8, 300);
+        scale = size / cols;
+        canvas.width = cols * scale;
+        canvas.height = rows * scale;
+      }
+      window.addEventListener("resize", resize);
+      resize();
+
+      const colors = [
+        null,
+        "#22d3ee",
+        "#facc15",
+        "#a78bfa",
+        "#4ade80",
+        "#f87171",
+        "#60a5fa",
+        "#fb923c",
+      ];
+
+      const shapes = [
+        [],
+        [[1, 1, 1, 1]],
+        [
+          [2, 2],
+          [2, 2],
+        ],
+        [
+          [0, 3, 0],
+          [3, 3, 3],
+        ],
+        [
+          [0, 4, 4],
+          [4, 4, 0],
+        ],
+        [
+          [5, 5, 0],
+          [0, 5, 5],
+        ],
+        [
+          [6, 0, 0],
+          [6, 6, 6],
+        ],
+        [
+          [0, 0, 7],
+          [7, 7, 7],
+        ],
+      ];
+
+      let board, player, score, level, dropCounter, dropInterval, lastTime;
+
+      function createBoard() {
+        return Array.from({ length: rows }, () => Array(cols).fill(0));
+      }
+
+      function createPiece() {
+        const type = Math.floor(Math.random() * (shapes.length - 1)) + 1;
+        return shapes[type].map((row) => row.slice());
+      }
+
+      function resetPlayer() {
+        player.matrix = createPiece();
+        player.pos.y = 0;
+        player.pos.x = ((cols / 2) | 0) - ((player.matrix[0].length / 2) | 0);
+
+        if (collide()) gameOver();
+      }
+
+      function collide() {
+        for (let y = 0; y < player.matrix.length; y++) {
+          for (let x = 0; x < player.matrix[y].length; x++) {
+            if (
+              player.matrix[y][x] &&
+              (board[y + player.pos.y] &&
+                board[y + player.pos.y][x + player.pos.x]) !== 0
+            ) {
+              return true;
+            }
+          }
+        }
+        return false;
+      }
+
+      function merge() {
+        player.matrix.forEach((row, y) => {
+          row.forEach((val, x) => {
+            if (val) board[y + player.pos.y][x + player.pos.x] = val;
+          });
+        });
+      }
+
+      function rotateMatrix(matrix) {
+        return matrix[0].map((_, i) => matrix.map((row) => row[i])).reverse();
+      }
+
+      function rotate() {
+        const pos = player.pos.x;
+        player.matrix = rotateMatrix(player.matrix);
+
+        if (collide()) player.pos.x = pos;
+      }
+
+      function move(dir) {
+        player.pos.x += dir;
+        if (collide()) player.pos.x -= dir;
+      }
+
+      function drop() {
+        player.pos.y++;
+        if (collide()) {
+          player.pos.y--;
+          merge();
+          clearLines();
+          resetPlayer();
+        }
+        dropCounter = 0;
+      }
+
+      function clearLines() {
+        let lines = 0;
+        outer: for (let y = rows - 1; y >= 0; y--) {
+          for (let x = 0; x < cols; x++) {
+            if (board[y][x] === 0) continue outer;
+          }
+          board.splice(y, 1);
+          board.unshift(Array(cols).fill(0));
+          y++;
+          lines++;
+        }
+
+        if (lines > 0) {
+          score += lines * 10;
+          level = Math.floor(score / 50) + 1;
+          dropInterval = 1000 - level * 80;
+          updateUI();
+        }
+      }
+
+      function drawMatrix(matrix, offset) {
+        matrix.forEach((row, y) => {
+          row.forEach((val, x) => {
+            if (val) {
+              ctx.fillStyle = colors[val];
+              ctx.fillRect(
+                (x + offset.x) * scale,
+                (y + offset.y) * scale,
+                scale - 1,
+                scale - 1,
+              );
+            }
+          });
+        });
+      }
+
+      function draw() {
+        ctx.fillStyle = "#020617";
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        drawMatrix(board, { x: 0, y: 0 });
+        drawMatrix(player.matrix, player.pos);
+      }
+
+      function update(time = 0) {
+        const delta = time - lastTime;
+        lastTime = time;
+        dropCounter += delta;
+
+        if (dropCounter > dropInterval) drop();
+
+        draw();
+        requestAnimationFrame(update);
+      }
+
+      function updateUI() {
+        document.getElementById("score").innerText = score;
+        document.getElementById("level").innerText = level;
+      }
+
+      function gameOver() {
+        alert("Game Over!");
+        restartGame();
+      }
+
+      function restartGame() {
+        board = createBoard();
+        player = { pos: { x: 0, y: 0 }, matrix: null };
+        score = 0;
+        level = 1;
+        dropInterval = 1000;
+        dropCounter = 0;
+        resetPlayer();
+        updateUI();
+      }
+
+      document.addEventListener("keydown", (e) => {
+        if (e.key === "ArrowLeft") move(-1);
+        if (e.key === "ArrowRight") move(1);
+        if (e.key === "ArrowDown") drop();
+        if (e.key === "ArrowUp") rotate();
+      });
+
+      restartGame();
+      update();
+    </script>
+  </body>
+</html>
