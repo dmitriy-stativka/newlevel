@@ -1,0 +1,311 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Car Dodge Game</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      body {
+        margin: 0;
+        overflow: hidden;
+        background: #222;
+        font-family: Arial, sans-serif;
+        color: white;
+        text-align: center;
+      }
+
+      #game {
+        position: relative;
+        width: 300px;
+        height: 600px;
+        margin: 10px auto;
+        background: #444;
+        overflow: hidden;
+        border: 4px solid #fff;
+      }
+
+      .lane-line {
+        position: absolute;
+        width: 4px;
+        height: 40px;
+        background: white;
+        opacity: 0.6;
+        animation: moveLines linear infinite;
+      }
+
+      @keyframes moveLines {
+        from {
+          top: -40px;
+        }
+        to {
+          top: 100%;
+        }
+      }
+
+      .car {
+        position: absolute;
+        width: 60px;
+        height: 100px;
+        border-radius: 12px;
+      }
+
+      #player {
+        bottom: 10px;
+        background: linear-gradient(#ff4d4d, #990000);
+        border: 2px solid white;
+      }
+
+      .enemy {
+        background: linear-gradient(#ffd633, #cc9900);
+        border: 2px solid #222;
+      }
+
+      .car::before {
+        content: "";
+        position: absolute;
+        top: 10px;
+        left: 10px;
+        width: 40px;
+        height: 25px;
+        background: #99dfff;
+        border-radius: 5px;
+      }
+
+      .car::after {
+        content: "";
+        position: absolute;
+        bottom: 8px;
+        left: 8px;
+        width: 44px;
+        height: 10px;
+        background: white;
+        border-radius: 4px;
+      }
+
+      #score {
+        position: absolute;
+        top: 10px;
+        left: 10px;
+      }
+
+      #gameOver {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        display: none;
+      }
+
+      #controls {
+        width: 300px;
+        margin: 10px auto;
+        display: flex;
+        justify-content: space-between;
+      }
+
+      button {
+        padding: 10px;
+        font-size: 16px;
+      }
+    </style>
+  </head>
+  <body>
+    <button onclick="enableGyro()">Включить гироскоп</button>
+
+    <div id="game">
+      <div id="score">Score: 0</div>
+      <div id="player" class="car"></div>
+
+      <div id="gameOver">
+        <h2>Game Over</h2>
+        <button onclick="restart()">Restart</button>
+      </div>
+    </div>
+
+    <div id="controls">
+      <button onclick="moveLeft()">⬅</button>
+      <button onclick="moveRight()">➡</button>
+    </div>
+
+    <script>
+      const game = document.getElementById("game");
+      const player = document.getElementById("player");
+      const scoreEl = document.getElementById("score");
+      const gameOverEl = document.getElementById("gameOver");
+
+      const lanes = [20, 120, 220];
+
+      let playerLane = 1;
+      let enemies = [];
+      let speed = 1.5;
+      let score = 0;
+      let gameRunning = true;
+
+      // позиция игрока
+      function updatePlayer() {
+        player.style.left = lanes[playerLane] + "px";
+      }
+      updatePlayer();
+
+      // кнопки
+      function moveLeft() {
+        if (playerLane > 0) {
+          playerLane--;
+          updatePlayer();
+        }
+      }
+
+      function moveRight() {
+        if (playerLane < 2) {
+          playerLane++;
+          updatePlayer();
+        }
+      }
+
+      // клавиатура
+      document.addEventListener("keydown", (e) => {
+        if (!gameRunning) return;
+        if (e.key === "ArrowLeft") moveLeft();
+        if (e.key === "ArrowRight") moveRight();
+      });
+
+      // 📱 ГИРОСКОП
+      function enableGyro() {
+        if (
+          typeof DeviceOrientationEvent !== "undefined" &&
+          typeof DeviceOrientationEvent.requestPermission === "function"
+        ) {
+          DeviceOrientationEvent.requestPermission().then((permission) => {
+            if (permission === "granted") {
+              window.addEventListener("deviceorientation", handleGyro);
+            }
+          });
+        } else {
+          window.addEventListener("deviceorientation", handleGyro);
+        }
+      }
+
+      function handleGyro(event) {
+        const tilt = event.gamma; // наклон влево/вправо
+
+        if (tilt < -10 && playerLane > 0) {
+          moveLeft();
+        } else if (tilt > 10 && playerLane < 2) {
+          moveRight();
+        }
+      }
+
+      // спавн
+      function spawnEnemy() {
+        if (Math.random() < 0.5) return;
+
+        const lane = Math.floor(Math.random() * 3);
+        const safeDistance = 220;
+
+        let closest = null;
+
+        for (let e of enemies) {
+          if (parseInt(e.dataset.lane) === lane) {
+            if (
+              !closest ||
+              parseInt(e.style.top) < parseInt(closest.style.top)
+            ) {
+              closest = e;
+            }
+          }
+        }
+
+        if (closest) {
+          const distance = parseInt(closest.style.top) - -120;
+          if (distance < safeDistance) return;
+        }
+
+        const enemy = document.createElement("div");
+        enemy.classList.add("car", "enemy");
+        enemy.dataset.lane = lane;
+        enemy.style.left = lanes[lane] + "px";
+        enemy.style.top = "-120px";
+
+        game.appendChild(enemy);
+        enemies.push(enemy);
+      }
+
+      // столкновение
+      function isColliding(a, b) {
+        const r1 = a.getBoundingClientRect();
+        const r2 = b.getBoundingClientRect();
+        return !(
+          r1.bottom < r2.top ||
+          r1.top > r2.bottom ||
+          r1.right < r2.left ||
+          r1.left > r2.right
+        );
+      }
+
+      // цикл
+      function gameLoop() {
+        if (!gameRunning) return;
+
+        enemies.forEach((enemy, i) => {
+          let top = parseInt(enemy.style.top);
+          top += speed;
+          enemy.style.top = top + "px";
+
+          if (isColliding(player, enemy)) gameOver();
+
+          if (top > 600) {
+            enemy.remove();
+            enemies.splice(i, 1);
+            score += 10;
+          }
+        });
+
+        speed += 0.0005;
+        score += 0.05;
+
+        scoreEl.innerText = "Score: " + Math.floor(score);
+
+        requestAnimationFrame(gameLoop);
+      }
+
+      setInterval(() => {
+        if (gameRunning) spawnEnemy();
+      }, 700);
+
+      // линии
+      for (let i = 0; i < 10; i++) {
+        const line = document.createElement("div");
+        line.classList.add("lane-line");
+        line.style.left = "100px";
+        line.style.top = i * 60 + "px";
+        line.style.animationDuration = "1s";
+        game.appendChild(line);
+
+        const line2 = line.cloneNode();
+        line2.style.left = "200px";
+        game.appendChild(line2);
+      }
+
+      // game over
+      function gameOver() {
+        gameRunning = false;
+        gameOverEl.style.display = "block";
+      }
+
+      // restart
+      function restart() {
+        enemies.forEach((e) => e.remove());
+        enemies = [];
+        speed = 1.5;
+        score = 0;
+        playerLane = 1;
+        updatePlayer();
+        gameRunning = true;
+        gameOverEl.style.display = "none";
+        gameLoop();
+      }
+
+      gameLoop();
+    </script>
+  </body>
+</html>

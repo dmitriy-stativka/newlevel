@@ -309,6 +309,16 @@
         box-shadow: inset 0 0 60px rgba(143, 188, 85, 0.35);
       }
 
+      .game-card.racing {
+        --clr: #ff6b35;
+      }
+      .game-card.racing:hover {
+        border-color: #ff6b35;
+      }
+      .game-card.racing .card-glow {
+        box-shadow: inset 0 0 60px rgba(255, 107, 53, 0.32);
+      }
+
       /* Pixel art preview */
       .game-preview {
         width: 100%;
@@ -796,6 +806,32 @@
               <span class="key">WASD</span>
               <span class="key">Стріляти</span>
               <span class="key">Танки</span>
+            </div>
+          </div>
+        </a>
+
+        <!-- Гонки -->
+        <a href="racing.html" class="game-card racing">
+          <div class="card-glow"></div>
+          <div class="badge new">NEW</div>
+          <div class="game-preview" id="preview-racing">
+            <canvas
+              class="preview-canvas"
+              id="c-racing"
+              width="260"
+              height="180"
+            ></canvas>
+          </div>
+          <div class="play-btn">ГРАТИ</div>
+          <div class="game-info">
+            <div class="game-title">Гонки</div>
+            <div class="game-desc">
+              Аркадні перегони. Автор: Ерик Хорт.
+            </div>
+            <div class="controls-hint">
+              <span class="key">← →</span>
+              <span class="key">Газ</span>
+              <span class="key">Гонки</span>
             </div>
           </div>
         </a>
@@ -1440,6 +1476,75 @@
         draw();
       }
 
+      function drawRacingPreview() {
+        const c = document.getElementById("c-racing");
+        if (!c) return;
+        const ctx = c.getContext("2d");
+        let t = 0;
+
+        function draw() {
+          const sky = ctx.createLinearGradient(0, 0, 0, 72);
+          sky.addColorStop(0, "#1a2744");
+          sky.addColorStop(1, "#2d3d5c");
+          ctx.fillStyle = sky;
+          ctx.fillRect(0, 0, 260, 72);
+
+          ctx.fillStyle = "#1c1c22";
+          ctx.fillRect(0, 72, 260, 108);
+
+          const roadL = 78;
+          const roadW = 104;
+          ctx.fillStyle = "#2b2b33";
+          ctx.fillRect(roadL, 72, roadW, 108);
+
+          const scroll = (t * 6) % 40;
+          ctx.strokeStyle = "rgba(255, 255, 255, 0.75)";
+          ctx.setLineDash([18, 22]);
+          ctx.lineWidth = 3;
+          ctx.beginPath();
+          ctx.moveTo(130, 72 + scroll);
+          ctx.lineTo(130, 180);
+          ctx.stroke();
+          ctx.setLineDash([]);
+
+          ctx.strokeStyle = "#ff6b35";
+          ctx.lineWidth = 4;
+          ctx.beginPath();
+          ctx.moveTo(roadL, 72);
+          ctx.lineTo(roadL, 180);
+          ctx.stroke();
+          ctx.beginPath();
+          ctx.moveTo(roadL + roadW, 72);
+          ctx.lineTo(roadL + roadW, 180);
+          ctx.stroke();
+
+          const py = 118 + Math.sin(t / 14) * 4;
+          const px = 118 + Math.sin(t / 22) * 14;
+          ctx.fillStyle = "#e53935";
+          ctx.fillRect(px, py, 22, 36);
+          ctx.fillStyle = "#ffc107";
+          ctx.fillRect(px + 5, py + 28, 12, 8);
+
+          const oy = ((t * 5) % 200) - 40;
+          ctx.fillStyle = "#1565c0";
+          ctx.fillRect(92, oy, 20, 34);
+          ctx.fillStyle = "#42a5f5";
+          ctx.fillRect(148, oy + 70, 20, 34);
+
+          ctx.fillStyle = "rgba(255,255,255,0.06)";
+          for (let i = 0; i < 8; i++) {
+            const yy = ((i * 28 + t * 4) % 220) - 20;
+            ctx.fillRect(roadL - 26, yy, 14, 10);
+            ctx.fillRect(roadL + roadW + 12, yy + 15, 14, 10);
+          }
+
+          t++;
+          requestAnimationFrame(draw);
+        }
+
+        draw();
+      }
+
       drawMarioPreview();
       drawDinoPreview();
       drawFlappyPreview();
@@ -1451,6 +1556,7 @@
       drawCardrivePreview();
       drawBouncePreview();
       drawTanksPreview();
+      drawRacingPreview();
     </script>
   </body>
 </html>
