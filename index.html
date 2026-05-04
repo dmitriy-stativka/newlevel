@@ -336,6 +336,18 @@
         letter-spacing: 1px;
       }
 
+      .game-card.nova-gra {
+        --clr: #ff6b4a;
+      }
+      .game-card.nova-gra:hover {
+        border-color: #ffab40;
+      }
+      .game-card.nova-gra .card-glow {
+        box-shadow:
+          inset 0 0 50px rgba(255, 107, 74, 0.28),
+          inset 0 0 70px rgba(124, 179, 66, 0.15);
+      }
+
       /* Pixel art preview */
       .game-preview {
         width: 100%;
@@ -842,9 +854,7 @@
           <div class="play-btn">ГРАТИ</div>
           <div class="game-info">
             <div class="game-title">Гонки</div>
-            <div class="game-desc">
-              Аркадні перегони. Автор: Ерик Хорт.
-            </div>
+            <div class="game-desc">Аркадні перегони. Автор: Ерик Хорт.</div>
             <div class="controls-hint">
               <span class="key">← →</span>
               <span class="key">Газ</span>
@@ -867,9 +877,7 @@
           </div>
           <div class="play-btn">ГРАТИ</div>
           <div class="game-info">
-            <div class="game-title">
-              Тун Тун Сахур<br />Модный Тетрис
-            </div>
+            <div class="game-title">Тун Тун Сахур<br />Модный Тетрис</div>
             <div class="game-desc">
               Яскравий тетрис у власному стилі. Автор: Мария Свереденко.
             </div>
@@ -877,6 +885,32 @@
               <span class="key">← →</span>
               <span class="key">↓</span>
               <span class="key">Поворот</span>
+            </div>
+          </div>
+        </a>
+
+        <!-- Фрут Ніндзя -->
+        <a href="nova-gra.html" class="game-card nova-gra">
+          <div class="card-glow"></div>
+          <div class="badge new">NEW</div>
+          <div class="game-preview" id="preview-nova-gra">
+            <canvas
+              class="preview-canvas"
+              id="c-nova-gra"
+              width="260"
+              height="180"
+            ></canvas>
+          </div>
+          <div class="play-btn">ГРАТИ</div>
+          <div class="game-info">
+            <div class="game-title">Фрут Ніндзя</div>
+            <div class="game-desc">
+              Ріж фрукти жестами миші чи пальцем. Автор: Марія Павсюк.
+            </div>
+            <div class="controls-hint">
+              <span class="key">Миша</span>
+              <span class="key">Свайп</span>
+              <span class="key">Різ</span>
             </div>
           </div>
         </a>
@@ -1493,7 +1527,7 @@
           ctx.fillRect(40, 50, 70, 45);
           ctx.fillRect(150, 95, 55, 40);
 
-          const bx = (t * 3) % 320 - 40;
+          const bx = ((t * 3) % 320) - 40;
           ctx.fillStyle = "#ffd54f";
           ctx.fillRect(bx, 72, 5, 5);
 
@@ -1619,7 +1653,13 @@
             ctx.stroke();
           }
 
-          const palette = ["#ff2ec4", "#00e5ff", "#ffe600", "#7c4dff", "#ff6b35"];
+          const palette = [
+            "#ff2ec4",
+            "#00e5ff",
+            "#ffe600",
+            "#7c4dff",
+            "#ff6b35",
+          ];
           const blocks = [
             { x: 2, y: 9, w: 4, h: 1, i: 0 },
             { x: 7, y: 8, w: 2, h: 2, i: 1 },
@@ -1665,6 +1705,78 @@
         draw();
       }
 
+      function drawNovaGraPreview() {
+        const c = document.getElementById("c-nova-gra");
+        if (!c) return;
+        const ctx = c.getContext("2d");
+        let t = 0;
+
+        function fruit(fx, fy, r, fill, stem) {
+          ctx.fillStyle = fill;
+          ctx.beginPath();
+          ctx.arc(fx, fy, r, 0, Math.PI * 2);
+          ctx.fill();
+          if (stem) {
+            ctx.strokeStyle = "#5d4037";
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(fx, fy - r);
+            ctx.lineTo(fx + 3, fy - r - 6);
+            ctx.stroke();
+          }
+        }
+
+        function draw() {
+          const g = ctx.createLinearGradient(0, 0, 0, 180);
+          g.addColorStop(0, "#1a237e");
+          g.addColorStop(0.45, "#311b92");
+          g.addColorStop(1, "#0d1218");
+          ctx.fillStyle = g;
+          ctx.fillRect(0, 0, 260, 180);
+
+          const toss = (base, spd, phase) => {
+            const life = (t + phase) % 120;
+            const x = base + Math.sin((t + phase) / 11) * 12;
+            const y = 190 - life * spd - life * life * 0.012;
+            return { x, y, life };
+          };
+
+          fruit(toss(70, 2.2, 0).x, toss(70, 2.2, 0).y, 14, "#e53935", true);
+          fruit(
+            toss(140, 2.5, 40).x,
+            toss(140, 2.5, 40).y,
+            12,
+            "#ffb300",
+            false,
+          );
+          fruit(
+            toss(200, 2.0, 80).x,
+            toss(200, 2.0, 80).y,
+            11,
+            "#7cb342",
+            true,
+          );
+
+          ctx.strokeStyle = "rgba(255, 255, 255, 0.85)";
+          ctx.lineWidth = 3;
+          ctx.lineCap = "round";
+          ctx.beginPath();
+          const sx = 40 + ((t * 3) % 200);
+          ctx.moveTo(sx, 140);
+          ctx.quadraticCurveTo(sx + 45, 60 + Math.sin(t / 8) * 15, sx + 90, 50);
+          ctx.stroke();
+          ctx.shadowColor = "#fff59d";
+          ctx.shadowBlur = 8;
+          ctx.stroke();
+          ctx.shadowBlur = 0;
+
+          t++;
+          requestAnimationFrame(draw);
+        }
+
+        draw();
+      }
+
       drawMarioPreview();
       drawDinoPreview();
       drawFlappyPreview();
@@ -1678,6 +1790,7 @@
       drawTanksPreview();
       drawRacingPreview();
       drawTunTunPreview();
+      drawNovaGraPreview();
     </script>
   </body>
 </html>
